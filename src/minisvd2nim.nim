@@ -8,6 +8,7 @@ import std/paths
 import std/strformat
 
 import minisvd2nimpkg/parser
+import minisvd2nimpkg/renderer
 
 type SvdMainArgs = tuple[fn: Path]
 
@@ -18,7 +19,7 @@ proc main() =
   let params = commandLineParams()
   if parseArgs(params, args):
     let svd = parseSvdFile(args.fn)
-    echo "Device name: ", svd.name
+    renderNimFromSvd(svd, stdout)
 
 proc parseArgs(params: seq[string], args: var SvdMainArgs): bool =
   ## Returns validity of the command line parameters.
