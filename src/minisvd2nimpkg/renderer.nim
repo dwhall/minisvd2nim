@@ -5,7 +5,7 @@
 ##    https://www.keil.com/pack/doc/CMSIS/SVD/html/svd_Format_pg.html
 ##
 
-import parser
+import svdtypes
 
 func renderCommentHeader(outf: File, device: SvdDevice)
 
