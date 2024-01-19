@@ -19,7 +19,7 @@ proc main() =
   let params = commandLineParams()
   if parseArgs(params, args):
     let svd = parseSvdFile(args.fn)
-    renderNimFromSvd(svd, stdout)
+    renderNimFromSvd(stdout, svd)
 
 proc parseArgs(params: seq[string], args: var SvdMainArgs): bool =
   ## Returns validity of the command line parameters.

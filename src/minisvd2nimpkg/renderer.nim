@@ -1,4 +1,4 @@
-## Renders Nim source to represend a device
+## Renders Nim source to represent a device
 ## according to the given SVD data
 ##
 ## Reference:
@@ -7,5 +7,10 @@
 
 import parser
 
-func renderNimFromSvd*(device: SvdDevice, outf: File) =
-  outf.write(device.name)
+func renderCommentHeader(outf: File, device: SvdDevice)
+
+func renderNimFromSvd*(outf: File, device: SvdDevice) =
+  renderCommentHeader(outf, device)
+
+func renderCommentHeader(outf: File, device: SvdDevice) =
+  write(outf, "#\n")
