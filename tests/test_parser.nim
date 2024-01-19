@@ -1,7 +1,7 @@
 import std/paths
 import unittest
 
-import minisvd2nimpkg/svdparser
+import minisvd2nimpkg/parser
 
 let fn = getCurrentDir() / Path("tests") / Path("test.svd")
 

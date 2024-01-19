@@ -7,7 +7,7 @@ import std/files
 import std/paths
 import std/strformat
 
-import minisvd2nimpkg/svdparser
+import minisvd2nimpkg/parser
 
 type SvdMainArgs = tuple[fn: Path]
 
