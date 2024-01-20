@@ -11,21 +11,21 @@ import std/xmltree
 
 import svdtypes
 
-proc parseSvdDevice(deviceNode: XmlNode): SvdDevice
-proc parseCpu(cpuNode: XmlNode): ref SvdCpu
-proc parseSvdPeripherals(peripheralsNode: XmlNode): ref seq[SvdPeripheral]
-proc parseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral
-proc parseSvdRegisters(registersNode: XmlNode): ref seq[SvdRegister]
-proc parseSvdRegister(registerNode: XmlNode): SvdRegister
-proc parseSvdFields(fieldsNode: XmlNode): ref seq[SvdRegField]
-proc parseSvdField(fieldNode: XmlNode): SvdRegField
+func parseSvdDevice(deviceNode: XmlNode): SvdDevice
+func parseCpu(cpuNode: XmlNode): ref SvdCpu
+func parseSvdPeripherals(peripheralsNode: XmlNode): ref seq[SvdPeripheral]
+func parseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral
+func parseSvdRegisters(registersNode: XmlNode): ref seq[SvdRegister]
+func parseSvdRegister(registerNode: XmlNode): SvdRegister
+func parseSvdFields(fieldsNode: XmlNode): ref seq[SvdRegField]
+func parseSvdField(fieldNode: XmlNode): SvdRegField
 
 proc parseSvdFile*(fn: Path): SvdDevice =
   let xml = loadXml(fn.string)
   assert xml.tag == "device"
   result = parseSvdDevice(xml)
 
-proc parseSvdDevice(deviceNode: XmlNode): SvdDevice =
+func parseSvdDevice(deviceNode: XmlNode): SvdDevice =
   result.name = deviceNode.child("name").innerText
   result.description = deviceNode.child("description").innerText
   result.version = parseFloat(deviceNode.child("version").innerText)
@@ -39,7 +39,7 @@ proc parseSvdDevice(deviceNode: XmlNode): SvdDevice =
   let peripheralsNode = deviceNode.child("peripherals")
   result.peripherals = parseSvdPeripherals(peripheralsNode)
 
-proc parseCpu(cpuNode: XmlNode): ref SvdCpu =
+func parseCpu(cpuNode: XmlNode): ref SvdCpu =
   if isNil(cpuNode): return nil
   new(result)
   result.name = cpuNode.child("name").innerText
@@ -51,12 +51,12 @@ proc parseCpu(cpuNode: XmlNode): ref SvdCpu =
   result.nvicPrioBits = parseInt(cpuNode.child("nvicPrioBits").innerText)
   result.vendorSystickConfig = cpuNode.child("vendorSystickConfig").innerText == "true"
 
-proc parseSvdPeripherals(peripheralsNode: XmlNode): ref seq[SvdPeripheral] =
+func parseSvdPeripherals(peripheralsNode: XmlNode): ref seq[SvdPeripheral] =
   if isNil(peripheralsNode): return nil
   for pnode in peripheralsNode.findAll("peripheral"):
     result[].add(parseSvdPeripheral(pnode))
 
-proc parseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
+func parseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
   result.name = peripheralNode.child("name").innerText
   result.interrupt = parseInt(peripheralNode.child("interrupt").innerText)
   result.addressBlockOffset = parseUInt(peripheralNode.child("addressBlockOffset").innerText)
@@ -64,12 +64,12 @@ proc parseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
   let registersNode = peripheralNode.child("registers")
   result.registers = parseSvdRegisters(registersNode)
 
-proc parseSvdRegisters(registersNode: XmlNode): ref seq[SvdRegister] =
+func parseSvdRegisters(registersNode: XmlNode): ref seq[SvdRegister] =
   if isNil(registersNode): return nil
   for rnode in registersNode.findAll("peripheral"):
     result[].add(parseSvdRegister(rnode))
 
-proc parseSvdRegister(registerNode: XmlNode): SvdRegister =
+func parseSvdRegister(registerNode: XmlNode): SvdRegister =
   result.name = registerNode.child("name").innerText
   result.description = registerNode.child("description").innerText
   result.address = parseBiggestUInt(registerNode.child("address").innerText)
@@ -77,12 +77,12 @@ proc parseSvdRegister(registerNode: XmlNode): SvdRegister =
   let fieldsNode = registerNode.child("fields")
   result.fields = parseSvdFields(fieldsNode)
 
-proc parseSvdFields(fieldsNode: XmlNode): ref seq[SvdRegField] =
+func parseSvdFields(fieldsNode: XmlNode): ref seq[SvdRegField] =
   if isNil(fieldsNode): return nil
   for fnode in fieldsNode.findAll("field"):
     result[].add(parseSvdField(fnode))
 
-proc parseSvdField(fieldNode: XmlNode): SvdRegField =
+func parseSvdField(fieldNode: XmlNode): SvdRegField =
   result.name = fieldNode.child("name").innerText
   result.description = fieldNode.child("description").innerText
   result.bitOffset = parseUInt(fieldNode.child("bitOffset").innerText)
