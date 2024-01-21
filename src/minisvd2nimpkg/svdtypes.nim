@@ -31,10 +31,18 @@ type
     resetVal*: uint64
     fields*: ref seq[SvdRegField]
 
+  SvdInterrupt* = object of SvdObject
+    description*: string
+    value*: int
+
+  SvdAddressBlock* = object
+    offset*: int
+    size*: int
+    usage*: string
+
   SvdPeripheral* = object of SvdObject
-    interrupt*: int
-    addressBlockOffset*: uint
-    addressBlockSize*: uint
+    interrupt*: ref SvdInterrupt
+    addressBlock*: ref SvdAddressBlock
     registers*: ref seq[SvdRegister]
 
   SvdDevice* = object of SvdObject
