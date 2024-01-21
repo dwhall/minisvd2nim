@@ -17,10 +17,13 @@ type Renderer* = ref object
   outf*: File
 
 proc renderHeader(outf: File, device: SvdDevice)
+proc renderCpu(outf: File, device: SvdDevice)
+proc renderInterrupts(outf: File, device: SvdDevice)
 
 proc renderNimFromSvd*(outf: File, device: SvdDevice) =
   renderHeader(outf, device)
-  # renderCore/Interrupts
+  renderCpu(outf, device)
+  renderInterrupts(outf, device)
   # renderPeripherals
   #   renderRegisters
   #     renderFields
@@ -28,16 +31,35 @@ proc renderNimFromSvd*(outf: File, device: SvdDevice) =
 proc renderHeader(outf: File, device: SvdDevice) =
   let filenameParts = getAppFilename().splitFile()
   let toolName = filenameParts.name & filenameParts.ext
-  write(outf, fmt"""# This file is auto-generated.
-    # Edits will be lost if the tool is run again.
-    #
-    # Tool:                 {toolName}
-    # Tool version:         {getVersion().strip()}
-    # Tool args:            {commandLineParams()}
-    # Input file version:   {device.version}
+  write(outf, fmt"""
+# This file is auto-generated.
+# Edits will be lost if the tool is run again.
+#
+# Tool:                 {toolName}
+# Tool version:         {getVersion().strip()}
+# Tool args:            {commandLineParams()}
+# Input file version:   {device.version}
 
-    import std/volatile
+import std/volatile
 
-    import templates
+import templates
 
-    """.unindent)
+""")
+
+proc renderCpu(outf: File, device: SvdDevice) =
+  write(outf, fmt"""
+# CPU details
+const DEVICE* = "{device.name}"
+const MPU_PRESET* = {device.cpu.mpuPresent}
+const FPU_PRESENT* = {device.cpu.fpuPresent}
+const NVIC_PRIO_BITS* = {device.cpu.nvicPrioBits}
+
+""")
+
+proc renderInterrupts(outf: File, device: SvdDevice) =
+  write(outf, fmt"""
+# TODO: fill in this placeholder
+Interrupts* = enum
+  discard
+
+""")
