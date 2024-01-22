@@ -22,6 +22,7 @@ func parseSvdRegister(registerNode: XmlNode): SvdRegister
 func parseSvdFields(fieldsNode: XmlNode): ref seq[SvdRegField]
 func parseSvdField(fieldNode: XmlNode): SvdRegField
 func parseAnyInt(s: string): int
+func parseAnyUInt(s: string): uint
 
 proc parseSvdFile*(fn: Path): SvdDevice =
   let xml = loadXml(fn.string)
@@ -43,25 +44,32 @@ func parseSvdDevice(deviceNode: XmlNode): SvdDevice =
   result.peripherals = parseSvdPeripherals(peripheralsNode)
 
 func parseSvdCpu(cpuNode: XmlNode): ref SvdCpu =
-  if isNil(cpuNode): return nil
+  if isNil(cpuNode):
+    return nil
   new(result)
   result.name = cpuNode.child("name").innerText
   result.revision = cpuNode.child("revision").innerText
-  result.endian = if cpuNode.child("endian").innerText == "little": SvdCpuEndian.littleEndian
-                  else: SvdCpuEndian.bigEndian
+  result.endian =
+    if cpuNode.child("endian").innerText == "little":
+      SvdCpuEndian.littleEndian
+    else:
+      SvdCpuEndian.bigEndian
   result.mpuPresent = cpuNode.child("mpuPresent").innerText == "true"
   result.fpuPresent = cpuNode.child("fpuPresent").innerText == "true"
   result.nvicPrioBits = parseAnyInt(cpuNode.child("nvicPrioBits").innerText)
   result.vendorSystickConfig = cpuNode.child("vendorSystickConfig").innerText == "true"
 
 func parseSvdPeripherals(peripheralsNode: XmlNode): ref seq[SvdPeripheral] =
-  if isNil(peripheralsNode): return nil
+  if isNil(peripheralsNode):
+    return nil
   new(result)
   for pnode in peripheralsNode.findAll("peripheral"):
     result[].add(parseSvdPeripheral(pnode))
 
 func parseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
   result.name = peripheralNode.child("name").innerText
+  result.baseAddress = parseAnyUInt(peripheralNode.child("baseAddress").innerText)
+  result.description = peripheralNode.child("description").innerText
   let interruptNode = peripheralNode.child("interrupt")
   result.interrupt = parseSvdInterrupt(interruptNode)
   let addressBlockNode = peripheralNode.child("addressBlock")
@@ -70,49 +78,63 @@ func parseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
   result.registers = parseSvdRegisters(registersNode)
 
 func parseSvdInterrupt(interruptNode: XmlNode): ref SvdInterrupt =
-  if isNil(interruptNode): return nil
+  if isNil(interruptNode):
+    return nil
   new(result)
   result.name = interruptNode.child("name").innerText
   result.description = interruptNode.child("description").innerText
   result.value = parseAnyInt(interruptNode.child("value").innerText)
 
 func parseSvdAddressBlock(addressBlockNode: XmlNode): ref SvdAddressBlock =
-  if isNil(addressBlockNode): return nil
+  if isNil(addressBlockNode):
+    return nil
   new(result)
   result.offset = parseAnyInt(addressBlockNode.child("offset").innerText)
   result.size = parseAnyInt(addressBlockNode.child("size").innerText)
   result.usage = addressBlockNode.child("usage").innerText
 
 func parseSvdRegisters(registersNode: XmlNode): ref seq[SvdRegister] =
-  if isNil(registersNode): return nil
+  if isNil(registersNode):
+    return nil
   for rnode in registersNode.findAll("peripheral"):
     result[].add(parseSvdRegister(rnode))
 
 func parseSvdRegister(registerNode: XmlNode): SvdRegister =
   result.name = registerNode.child("name").innerText
   result.description = registerNode.child("description").innerText
-  result.address = parseBiggestUInt(registerNode.child("address").innerText)
-  result.resetVal = parseBiggestUInt(registerNode.child("resetVal").innerText)
+  result.addressOffset = parseAnyInt(registerNode.child("addressOffset").innerText)
+  result.resetValue = parseAnyInt(registerNode.child("resetValue").innerText)
   let fieldsNode = registerNode.child("fields")
   result.fields = parseSvdFields(fieldsNode)
 
 func parseSvdFields(fieldsNode: XmlNode): ref seq[SvdRegField] =
-  if isNil(fieldsNode): return nil
+  if isNil(fieldsNode):
+    return nil
   for fnode in fieldsNode.findAll("field"):
     result[].add(parseSvdField(fnode))
 
 func parseSvdField(fieldNode: XmlNode): SvdRegField =
   result.name = fieldNode.child("name").innerText
   result.description = fieldNode.child("description").innerText
-  result.bitOffset = parseUInt(fieldNode.child("bitOffset").innerText)
-  result.bitWidth = parseUInt(fieldNode.child("bitWidth").innerText)
-  result.access = case fieldNode.child("access").innerText
-    of "read-only": SvdRegFieldAccess.readOnly
-    of "read-write": SvdRegFieldAccess.readWrite
-    else: SvdRegFieldAccess.writeOnly
+  result.bitOffset = parseInt(fieldNode.child("bitOffset").innerText)
+  result.bitWidth = parseInt(fieldNode.child("bitWidth").innerText)
+  result.access =
+    case fieldNode.child("access").innerText
+    of "read-only":
+      SvdRegFieldAccess.readOnly
+    of "read-write":
+      SvdRegFieldAccess.readWrite
+    else:
+      SvdRegFieldAccess.writeOnly
 
 func parseAnyInt(s: string): int =
   if s.startsWith("0x"):
     result = parseHexInt(s)
   else:
     result = parseInt(s)
+
+func parseAnyUInt(s: string): uint =
+  if s.startsWith("0x"):
+    result = cast[uint](parseHexInt(s))
+  else:
+    result = parseUInt(s)

@@ -21,14 +21,15 @@ type
 
   SvdRegField* = object of SvdObject
     description*: string
-    bitOffset*: uint
-    bitWidth*: uint
+    bitOffset*: int
+    bitWidth*: int
     access*: SvdRegFieldAccess
 
   SvdRegister* = object of SvdObject
     description*: string
-    address*: uint64
-    resetVal*: uint64
+    addressOffset*: int
+    size*: int
+    resetValue*: int
     fields*: ref seq[SvdRegField]
 
   SvdInterrupt* = object of SvdObject
@@ -41,6 +42,9 @@ type
     usage*: string
 
   SvdPeripheral* = object of SvdObject
+    description*: string
+    groupName*: string
+    baseAddress*: uint
     interrupt*: ref SvdInterrupt
     addressBlock*: ref SvdAddressBlock
     registers*: ref seq[SvdRegister]
