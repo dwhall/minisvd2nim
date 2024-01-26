@@ -37,6 +37,7 @@ func parseSvdFields(fieldsNode: XmlNode): ref seq[SvdRegField]
 func parseSvdField(fieldNode: XmlNode): SvdRegField
 func parseAnyInt(s: string): int
 func parseAnyUInt(s: string): uint
+func removeWhitespace(s: string): string
 
 proc parseSvdFile*(fn: Path): SvdDevice =
   var peripheralCache: PeripheralCache = newTable[string, SvdPeripheral]()
@@ -48,7 +49,7 @@ func parseSvdDevice(
     deviceNode: XmlNode, peripheralCache: var PeripheralCache
 ): SvdDevice =
   result.name = deviceNode.child("name").innerText
-  result.description = deviceNode.child("description").innerText
+  result.description = removeWhitespace(deviceNode.child("description").innerText)
   result.version = parseFloat(deviceNode.child("version").innerText)
   result.addressUnitBits = parseAnyInt(deviceNode.child("addressUnitBits").innerText)
   result.width = parseAnyInt(deviceNode.child("width").innerText)
@@ -107,7 +108,7 @@ func parseDerivedSvdPeripheral(
 func parseBaseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
   result.name = peripheralNode.child("name").innerText
   result.baseAddress = parseAnyUInt(peripheralNode.child("baseAddress").innerText)
-  result.description = peripheralNode.child("description").innerText
+  result.description = removeWhitespace(peripheralNode.child("description").innerText)
   let interruptNode = peripheralNode.child("interrupt")
   result.interrupt = parseSvdInterrupt(interruptNode)
   let addressBlockNode = peripheralNode.child("addressBlock")
@@ -120,7 +121,7 @@ func parseSvdInterrupt(interruptNode: XmlNode): ref SvdInterrupt =
     return nil
   new(result)
   result.name = interruptNode.child("name").innerText
-  result.description = interruptNode.child("description").innerText
+  result.description = removeWhitespace(interruptNode.child("description").innerText)
   result.value = parseAnyInt(interruptNode.child("value").innerText)
 
 func parseSvdAddressBlock(addressBlockNode: XmlNode): ref SvdAddressBlock =
@@ -140,7 +141,7 @@ func parseSvdRegisters(registersNode: XmlNode): ref seq[SvdRegister] =
 
 func parseSvdRegister(registerNode: XmlNode): SvdRegister =
   result.name = registerNode.child("name").innerText
-  result.description = registerNode.child("description").innerText
+  result.description = removeWhitespace(registerNode.child("description").innerText)
   result.addressOffset = parseAnyInt(registerNode.child("addressOffset").innerText)
   result.resetValue = parseAnyInt(registerNode.child("resetValue").innerText)
   let fieldsNode = registerNode.child("fields")
@@ -155,7 +156,7 @@ func parseSvdFields(fieldsNode: XmlNode): ref seq[SvdRegField] =
 
 func parseSvdField(fieldNode: XmlNode): SvdRegField =
   result.name = fieldNode.child("name").innerText
-  result.description = fieldNode.child("description").innerText
+  result.description = removeWhitespace(fieldNode.child("description").innerText)
   result.bitOffset = parseInt(fieldNode.child("bitOffset").innerText)
   result.bitWidth = parseInt(fieldNode.child("bitWidth").innerText)
   let
@@ -186,3 +187,6 @@ func parseAnyUInt(s: string): uint =
     result = cast[uint](parseHexInt(lowercase))
   else:
     result = parseUInt(s)
+
+func removeWhitespace(s: string): string =
+  result = join(s.splitWhitespace(), " ")
