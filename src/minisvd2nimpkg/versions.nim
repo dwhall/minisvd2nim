@@ -3,7 +3,7 @@ import std/strscans
 
 proc getNimbleVersion(): string {.compileTime.} =
   ## Returns the version string from this project's nimble file
-  let dump = staticExec "nimble dump .."
+  let dump = staticExec "nimble dump ../.."
   for ln in dump.splitLines:
     if scanf(ln, "version: \"$*\"", result): return
 
