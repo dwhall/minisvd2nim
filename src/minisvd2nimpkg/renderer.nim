@@ -56,7 +56,7 @@ proc renderDevice(outf, device) =
   write(
     outf,
     fmt"""
-declareDevice("{device.name}", {device.cpu.mpuPresent}, {device.cpu.fpuPresent}, {device.cpu.nVicPrioBits})
+declareDevice(deviceName = "{device.name}", mpuPresent = {device.cpu.mpuPresent}, fpuPresent = {device.cpu.fpuPresent}, nvicPrioBits = {device.cpu.nvicPrioBits})
 """
   )
 
@@ -78,7 +78,7 @@ proc renderInterrupt(outf, device, peripheral, interrupt) =
   write(
     outf,
     fmt"""
-declareInterrupt("{peripheral.name}", "{interrupt.name}", {interrupt.value}, "{interrupt.description}")
+declareInterrupt(peripheralName = "{peripheral.name}", interruptName = "{interrupt.name}", interruptValue = {interrupt.value}, interruptDesc = "{interrupt.description}")
 """
   )
 
@@ -87,7 +87,7 @@ proc renderRegister(outf, device, peripheral, register) =
   write(
     outf,
     fmt"""
-declareRegister("{peripheral.name}", "{register.name}", 0x{toHex(regAddress, 8)}, "{register.description}")
+declareRegister(peripheralName = "{peripheral.name}", registerName = "{register.name}", registerAddress = 0x{toHex(regAddress, 8)}, registerDesc = "{register.description}")
 """
   )
   if not isNil(register.fields):
@@ -98,6 +98,6 @@ proc renderField( outf, device, peripheral, register, field) =
   write(
     outf,
     fmt"""
-declareField("{peripheral.name}", "{register.name}", "{field.name}", {field.bitOffset}, {field.bitWidth}, {field.access}, "{field.description}")
+declareField(peripheralName = "{peripheral.name}", registerName = "{register.name}", fieldName = "{field.name}", bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, access = {field.access}, fieldDesc = "{field.description}")
 """
   )
