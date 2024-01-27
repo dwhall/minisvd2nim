@@ -18,7 +18,7 @@ using
   field: SvdRegField
 
 proc renderHeader(outf, device)
-proc renderCpu(outf, device)
+proc renderDevice(outf, device)
 proc renderInterrupts(outf, device)
 proc renderPeripherals(outf, device)
 proc renderPeripheral(outf, device, peripheral)
@@ -27,7 +27,7 @@ proc renderField(outf, device, peripheral, register, field)
 
 proc renderNimFromSvd*(outf, device) =
   renderHeader(outf, device)
-  renderCpu(outf, device)
+  renderDevice(outf, device)
   renderInterrupts(outf, device)
   renderPeripherals(outf, device)
 
@@ -47,21 +47,16 @@ proc renderHeader(outf, device) =
 
 import std/volatile
 
-import templates
+from minisvd2nim import templates
 
 """
   )
 
-proc renderCpu(outf, device) =
+proc renderDevice(outf, device) =
   write(
     outf,
     fmt"""
-# CPU details
-const DEVICE* = "{device.name}"
-const MPU_PRESET* = {device.cpu.mpuPresent}
-const FPU_PRESENT* = {device.cpu.fpuPresent}
-const NVIC_PRIO_BITS* = {device.cpu.nvicPrioBits}
-
+declareDevice("{device.name}", {device.cpu.mpuPresent}, {device.cpu.fpuPresent}, {device.cpu.nVicPrioBits})
 """
   )
 
