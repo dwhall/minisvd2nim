@@ -29,7 +29,8 @@ func parseBaseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral
 func parseSvdPeripheral(
   peripheralNode: XmlNode, peripheralCache: var PeripheralCache
 ): SvdPeripheral
-func parseSvdInterrupt(interruptNode: XmlNode): ref SvdInterrupt
+func parseSvdInterrupts(peripheralNode: XmlNode): ref seq[SvdInterrupt]
+func parseSvdInterrupt(interruptNode: XmlNode): SvdInterrupt
 func parseSvdAddressBlock(addressBlockNode: XmlNode): ref SvdAddressBlock
 func parseSvdRegisters(registersNode: XmlNode): ref seq[SvdRegister]
 func parseSvdRegister(registerNode: XmlNode): SvdRegister
@@ -109,17 +110,18 @@ func parseBaseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
   result.name = peripheralNode.child("name").innerText
   result.baseAddress = parseAnyUInt(peripheralNode.child("baseAddress").innerText)
   result.description = removeWhitespace(peripheralNode.child("description").innerText)
-  let interruptNode = peripheralNode.child("interrupt")
-  result.interrupt = parseSvdInterrupt(interruptNode)
+  result.interrupts = parseSvdInterrupts(peripheralNode)
   let addressBlockNode = peripheralNode.child("addressBlock")
   result.addressBlock = parseSvdAddressBlock(addressBlockNode)
   let registersNode = peripheralNode.child("registers")
   result.registers = parseSvdRegisters(registersNode)
 
-func parseSvdInterrupt(interruptNode: XmlNode): ref SvdInterrupt =
-  if isNil(interruptNode):
-    return nil
+func parseSvdInterrupts(peripheralNode: XmlNode): ref seq[SvdInterrupt] =
   new(result)
+  for irqNode in peripheralNode.findAll("interrupt"):
+    result[].add(parseSvdInterrupt(irqNode))
+
+func parseSvdInterrupt(interruptNode: XmlNode): SvdInterrupt =
   result.name = interruptNode.child("name").innerText
   result.description = removeWhitespace(interruptNode.child("description").innerText)
   result.value = parseAnyInt(interruptNode.child("value").innerText)

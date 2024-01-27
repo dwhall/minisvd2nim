@@ -4,8 +4,11 @@
 ## without changing and recompiling minisvd2nim.
 
 template declareDevice(deviceName: string, mpuPresent: bool, fpuPresent: bool, nvicPrioBits: int): untyped =
-  # CPU details
+  # Device details
   const DEVICE* = "{device.name}"
   const MPU_PRESET* = {device.cpu.mpuPresent}
   const FPU_PRESENT* = {device.cpu.fpuPresent}
   const NVIC_PRIO_BITS* = {device.cpu.nvicPrioBits}
+
+template declareInterrupt(peripheralName: string, interruptName: string, interruptValue: int, interruptDesc: string): untyped =
+  const IRQ_`interruptName`* = interruptValue   # `interruptDesc`

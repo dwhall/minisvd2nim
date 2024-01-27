@@ -45,7 +45,7 @@ type
     description*: string
     groupName*: string
     baseAddress*: uint
-    interrupt*: ref SvdInterrupt
+    interrupts*: ref seq[SvdInterrupt]
     addressBlock*: ref SvdAddressBlock
     registers*: ref seq[SvdRegister]
 
