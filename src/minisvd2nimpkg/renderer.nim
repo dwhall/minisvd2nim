@@ -9,7 +9,6 @@ import std/strutils
 import svdtypes
 import versions
 
-
 using
   outf: File
   device: SvdDevice
@@ -49,24 +48,29 @@ import std/volatile
 
 from minisvd2nim import templates
 
-"""
+""",
   )
 
 proc renderDevice(outf, device) =
   write(
     outf,
     fmt"""
-declareDevice(deviceName = "{device.name}", mpuPresent = {device.cpu.mpuPresent}, fpuPresent = {device.cpu.fpuPresent}, nvicPrioBits = {device.cpu.nvicPrioBits})
-"""
+declareDevice(deviceName = {device.name}, mpuPresent = {device.cpu.mpuPresent}, fpuPresent = {device.cpu.fpuPresent}, nvicPrioBits = {device.cpu.nvicPrioBits})
+""",
   )
 
 proc renderPeripherals(outf, device) =
   if not isNil(device.peripherals):
-    write(outf, "# Peripherals\p")
     for p in device.peripherals[]:
       renderPeripheral(outf, device, p)
 
 proc renderPeripheral(outf, device, peripheral) =
+  write(
+    outf,
+    fmt"""
+declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u, peripheralDesc = "{peripheral.description}")
+""",
+  )
   if not isNil(peripheral.interrupts):
     for irq in peripheral.interrupts[]:
       renderInterrupt(outf, device, peripheral, irq)
@@ -78,26 +82,25 @@ proc renderInterrupt(outf, device, peripheral, interrupt) =
   write(
     outf,
     fmt"""
-declareInterrupt(peripheralName = "{peripheral.name}", interruptName = "{interrupt.name}", interruptValue = {interrupt.value}, interruptDesc = "{interrupt.description}")
-"""
+declareInterrupt(peripheralName = {peripheral.name}, interruptName = {interrupt.name}, interruptValue = {interrupt.value}, interruptDesc = "{interrupt.description}")
+""",
   )
 
 proc renderRegister(outf, device, peripheral, register) =
-  let regAddress = peripheral.baseAddress + register.addressOffset.uint
   write(
     outf,
     fmt"""
-declareRegister(peripheralName = "{peripheral.name}", registerName = "{register.name}", registerAddress = 0x{toHex(regAddress, 8)}, registerDesc = "{register.description}")
-"""
+declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u, registerDesc = "{register.description}")
+""",
   )
   if not isNil(register.fields):
     for f in register.fields[]:
       renderField(outf, device, peripheral, register, f)
 
-proc renderField( outf, device, peripheral, register, field) =
+proc renderField(outf, device, peripheral, register, field) =
   write(
     outf,
     fmt"""
-declareField(peripheralName = "{peripheral.name}", registerName = "{register.name}", fieldName = "{field.name}", bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, access = {field.access}, fieldDesc = "{field.description}")
-"""
+declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, access = {field.access}, fieldDesc = "{field.description}")
+""",
   )

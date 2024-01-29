@@ -3,12 +3,48 @@
 ## This allows the programmer to change the final form of the Nim source
 ## without changing and recompiling minisvd2nim.
 
-template declareDevice(deviceName: string, mpuPresent: bool, fpuPresent: bool, nvicPrioBits: int): untyped =
-  # Device details
-  const DEVICE* = "{device.name}"
-  const MPU_PRESET* = {device.cpu.mpuPresent}
-  const FPU_PRESENT* = {device.cpu.fpuPresent}
-  const NVIC_PRIO_BITS* = {device.cpu.nvicPrioBits}
+# First some types that the templates will need
+import svdtypes
 
-template declareInterrupt(peripheralName: string, interruptName: string, interruptValue: int, interruptDesc: string): untyped =
-  const IRQ_`interruptName`* = interruptValue   # `interruptDesc`
+template declareDevice*(
+    deviceName: untyped, mpuPresent: bool, fpuPresent: bool, nvicPrioBits: int
+): untyped =
+  # Device details
+  const DEVICE* = "`deviceName`"
+  const MPU_PRESET* = mpuPresent
+  const FPU_PRESENT* = fpuPresent
+  const NVIC_PRIO_BITS* = nvicPrioBits
+
+template declarePeripheral*(
+    peripheralName: untyped, baseAddress: uint, peripheralDesc: string
+): untyped =
+  # TODO: figure out a good datatype for a peripheral
+  const `peripheralName BaseAddress`* {.inject.} = baseAddress
+
+template declareInterrupt*(
+    peripheralName: untyped,
+    interruptName: untyped,
+    interruptValue: int,
+    interruptDesc: string,
+): untyped =
+  const `irq interruptName`* = interruptValue # `interruptDesc`
+
+template declareRegister*(
+    peripheralName: untyped,
+    registerName: untyped,
+    addressOffset: uint,
+    registerDesc: string,
+): untyped =
+  # TODO figure out a good datatype for a register
+  const `registerName Reg`* = `peripheralName BaseAddress` + addressOffset
+
+template declareField*(
+    peripheralName: untyped,
+    registerName: untyped,
+    fieldName: untyped,
+    bitOffset: int,
+    bitWidth: int,
+    access: untyped,
+    fieldDesc: string,
+) =
+  const `fieldName`* = 0
