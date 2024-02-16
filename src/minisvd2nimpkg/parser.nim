@@ -172,11 +172,8 @@ func parseSvdField(fieldNode: XmlNode): SvdRegField =
   result.description = removeWhitespace(fieldNode.child("description").innerText)
   result.bitOffset = parseInt(fieldNode.child("bitOffset").innerText)
   result.bitWidth = parseInt(fieldNode.child("bitWidth").innerText)
-  let accessText =
-    if isNil(fieldNode.child("access")):
-      "read-only"
-    else:
-      fieldNode.child("access").innerText
+  let accessNode = fieldNode.child("access")
+  let accessText = if isNil(accessNode): "read-only" else: accessNode.innerText
   result.access =
     case accessText
     of "write-only": SvdRegFieldAccess.writeOnly
