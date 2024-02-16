@@ -25,9 +25,10 @@ test "the .svd parse procedure on a STM32 .svd file":
   check device.name == "STM32F446"
 
 test "the .svd parse procedure should parse an interrupt":
-  let irq = device.peripherals[0].interrupt
-  check irq.name == "DCMI"
-  check irq.value == 78
+  let irqs = device.peripherals[0].interrupts
+  check irqs[].len > 0
+  check irqs[0].name == "DCMI"
+  check irqs[0].value == 78
 
 test "the .svd parse procedure removes disruptive whitespace from descriptions":
   let description = device.peripherals[0].registers[0].fields[4].description  # DCMI_CR.ESS

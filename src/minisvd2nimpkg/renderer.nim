@@ -68,7 +68,7 @@ proc renderPeripheral(outf, device, peripheral) =
   write(
     outf,
     fmt"""
-declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u, peripheralDesc = "{peripheral.description}")
+declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u32, peripheralDesc = "{peripheral.description}")
 """,
   )
   if not isNil(peripheral.interrupts):
@@ -90,7 +90,7 @@ proc renderRegister(outf, device, peripheral, register) =
   write(
     outf,
     fmt"""
-declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u, registerDesc = "{register.description}")
+declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, registerDesc = "{register.description}")
 """,
   )
   if not isNil(register.fields):

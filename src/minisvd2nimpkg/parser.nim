@@ -13,7 +13,7 @@ import std/xmltree
 
 import svdtypes
 
-type PeripheralCache = TableRef[string, SvdPeripheral]
+type PeripheralCache = Table[string, SvdPeripheral]
 
 func parseSvdDevice(
   deviceNode: XmlNode, peripheralCache: var PeripheralCache
@@ -41,7 +41,7 @@ func parseAnyUInt(s: string): uint
 func removeWhitespace(s: string): string
 
 proc parseSvdFile*(fn: Path): SvdDevice =
-  var peripheralCache: PeripheralCache = newTable[string, SvdPeripheral]()
+  var peripheralCache: PeripheralCache
   let xml = loadXml(fn.string)
   assert xml.tag == "device"
   result = parseSvdDevice(xml, peripheralCache)
