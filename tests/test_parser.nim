@@ -1,5 +1,4 @@
 import std/paths
-import std/strutils
 import unittest
 
 import minisvd2nimpkg/parser
@@ -26,7 +25,7 @@ test "the .svd parse procedure on a STM32 .svd file":
 
 test "the .svd parse procedure should parse an interrupt":
   let irqs = device.peripherals[0].interrupts
-  check irqs[].len > 0
+  check irqs.len > 0
   check irqs[0].name == "DCMI"
   check irqs[0].value == 78
 

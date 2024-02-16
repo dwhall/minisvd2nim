@@ -30,7 +30,7 @@ type
     addressOffset*: int
     size*: int
     resetValue*: int
-    fields*: ref seq[SvdRegField]
+    fields*: seq[SvdRegField]
 
   SvdInterrupt* = object of SvdObject
     description*: string
@@ -45,9 +45,9 @@ type
     description*: string
     groupName*: string
     baseAddress*: uint
-    interrupts*: ref seq[SvdInterrupt]
+    interrupts*: seq[SvdInterrupt]
     addressBlock*: ref SvdAddressBlock
-    registers*: ref seq[SvdRegister]
+    registers*: seq[SvdRegister]
 
   SvdDevice* = object of SvdObject
     description*: string
@@ -58,4 +58,4 @@ type
     resetValue*: int
     resetMask*: int
     cpu*: ref SvdCpu
-    peripherals*: ref seq[SvdPeripheral]
+    peripherals*: seq[SvdPeripheral]

@@ -60,9 +60,8 @@ declareDevice(deviceName = {device.name}, mpuPresent = {device.cpu.mpuPresent}, 
   )
 
 proc renderPeripherals(outf, device) =
-  if not isNil(device.peripherals):
-    for p in device.peripherals[]:
-      renderPeripheral(outf, device, p)
+  for p in device.peripherals:
+    renderPeripheral(outf, device, p)
 
 proc renderPeripheral(outf, device, peripheral) =
   write(
@@ -71,12 +70,10 @@ proc renderPeripheral(outf, device, peripheral) =
 declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u32, peripheralDesc = "{peripheral.description}")
 """,
   )
-  if not isNil(peripheral.interrupts):
-    for irq in peripheral.interrupts[]:
-      renderInterrupt(outf, device, peripheral, irq)
-  if not isNil(peripheral.registers):
-    for r in peripheral.registers[]:
-      renderRegister(outf, device, peripheral, r)
+  for irq in peripheral.interrupts:
+    renderInterrupt(outf, device, peripheral, irq)
+  for r in peripheral.registers:
+    renderRegister(outf, device, peripheral, r)
 
 proc renderInterrupt(outf, device, peripheral, interrupt) =
   write(
@@ -93,9 +90,8 @@ proc renderRegister(outf, device, peripheral, register) =
 declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, registerDesc = "{register.description}")
 """,
   )
-  if not isNil(register.fields):
-    for f in register.fields[]:
-      renderField(outf, device, peripheral, register, f)
+  for f in register.fields:
+    renderField(outf, device, peripheral, register, f)
 
 proc renderField(outf, device, peripheral, register, field) =
   write(

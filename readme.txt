@@ -2,10 +2,9 @@
 
 [minisvd2nim](github.com/dwhall/minisvd2nim) is a command line tool
 that processes one SVD file as input and renders declarative nim
-source to stdout.  The declarations are calls to templates which render
+source to stdout.  The declarations invoke templates which produce
 the final nim code.  This way, a programmer can change the templates, and
-not the minisvd2nim binary, if changes are needed or improvements are found
-to the final code.
+not the minisvd2nim binary, to fix or improve the final code.
 
                                            ┌──────────────────────┐
                                            │                      │
@@ -37,7 +36,5 @@ is more comprehensive in its support for SVD files
 and manufacturers of ARM based microcontrollers.
 
 ## Thanks
-
-go to:
 
 * https://asciiflow.com for making ASCII art easy
