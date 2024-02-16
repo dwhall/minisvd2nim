@@ -106,9 +106,20 @@ func parseDerivedSvdPeripheral(
     peripheralNode: XmlNode, basePeripheral: SvdPeripheral
 ): SvdPeripheral =
   result = basePeripheral # copy
-  # FIXME: parse all children of the derived peripheral
+  # The name and baseAddress fields MUST be differentiated from the base peripheral
   result.name = peripheralNode.child("name").innerText
   result.baseAddress = parseAnyUInt(peripheralNode.child("baseAddress").innerText)
+  # The following fields are optionally differentiated from the base peripheral
+  let descNode = peripheralNode.child("description")
+  if not isNil(descNode):
+    result.description = removeWhitespace(peripheralNode.child("description").innerText)
+  let irqNode = peripheralNode.child("interrupt")
+  if not isNil(irqNode):
+    result.interrupts.setLen(0)
+    parseSvdInterrupts(peripheralNode, result.interrupts)
+  let addressBlockNode = peripheralNode.child("addressBlock")
+  result.addressBlock = parseSvdAddressBlock(addressBlockNode)
+  # Do not differentiate registers (that's the whole reason for SVD's "derivedFrom")
 
 func parseBaseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
   result.name = peripheralNode.child("name").innerText

@@ -1,4 +1,5 @@
 import std/paths
+import std/strutils
 import unittest
 
 import minisvd2nimpkg/parser
@@ -32,3 +33,12 @@ test "the .svd parse procedure should parse an interrupt":
 test "the .svd parse procedure removes disruptive whitespace from descriptions":
   let description = device.peripherals[0].registers[0].fields[4].description  # DCMI_CR.ESS
   check description == "Embedded synchronization select"
+
+test "derived peripherals should overwrite their parent's fields with their own":
+  # The problem was DMA1 was derived from DMA2 and ended up with this:
+  # declareInterrupt(peripheralName = DMA1, interruptName = DMA2_Stream0, interruptValue = 56, interruptDesc = "DMA2 Stream0 global interrupt")
+  for p in device.peripherals:
+    if p.name == "DMA1":
+      for irq in p.interrupts:
+        check irq.name.startsWith("DMA1")
+      break
