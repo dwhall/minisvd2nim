@@ -4,11 +4,13 @@
 ## without changing and recompiling minisvd2nim.
 
 # First some types that the templates will need
-type
-  RegisterVal = uint32
+type RegisterVal = uint32
 
 template declareDevice*(
-    deviceName: untyped, mpuPresent: static bool, fpuPresent: static bool, nvicPrioBits: static int
+    deviceName: untyped,
+    mpuPresent: static bool,
+    fpuPresent: static bool,
+    nvicPrioBits: static int,
 ): untyped =
   # Device details
   const DEVICE* {.inject.} = astToStr(deviceName)
@@ -37,10 +39,20 @@ template declareRegister*(
     registerDesc: static string,
 ): untyped =
   type `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
-  type `peripheralName _ registerName Ptr` {.inject.} = ptr `peripheralName _ registerName Val`
-  const `peripheralName _ registerName` {.inject.} = cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset)
-  template `registerName`*(base: static `peripheralName Base`): `peripheralName _ registerName Val` = volatileLoad(`registerName _ peripheralName`)
-  template `registerName =`*(base: static `peripheralName Base`, val: `peripheralName _ registerName Val`) = volatileStore(`peripheralName _ registerName`, val)
+  type `peripheralName _ registerName Ptr` {.inject.} =
+    ptr `peripheralName _ registerName Val`
+
+  const `peripheralName _ registerName` {.inject.} =
+    cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset)
+  template `registerName`*(
+      base: static `peripheralName Base`
+  ): `peripheralName _ registerName Val` =
+    volatileLoad(`registerName _ peripheralName`)
+
+  template `registerName=`*(
+      base: static `peripheralName Base`, val: `peripheralName _ registerName Val`
+  ) =
+    volatileStore(`peripheralName _ registerName`, val)
 
 template declareField*(
     peripheralName: untyped,
