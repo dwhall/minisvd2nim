@@ -35,7 +35,7 @@ proc renderHeader(outf, device) =
   let toolName = filenameParts.name & filenameParts.ext
   write(
     outf,
-    fmt"""
+    &"""
 # This file is auto-generated.
 # Edits will be lost if the tool is run again.
 #
@@ -54,9 +54,7 @@ from minisvd2nim import templates
 proc renderDevice(outf, device) =
   write(
     outf,
-    fmt"""
-declareDevice(deviceName = {device.name}, mpuPresent = {device.cpu.mpuPresent}, fpuPresent = {device.cpu.fpuPresent}, nvicPrioBits = {device.cpu.nvicPrioBits})
-""",
+    &"declareDevice(deviceName = {device.name}, mpuPresent = {device.cpu.mpuPresent}, fpuPresent = {device.cpu.fpuPresent}, nvicPrioBits = {device.cpu.nvicPrioBits})",
   )
 
 proc renderPeripherals(outf, device) =
@@ -66,9 +64,7 @@ proc renderPeripherals(outf, device) =
 proc renderPeripheral(outf, device, peripheral) =
   write(
     outf,
-    fmt"""
-declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u32, peripheralDesc = "{peripheral.description}")
-""",
+    &"declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u32, peripheralDesc = \"{peripheral.description}\")",
   )
   for irq in peripheral.interrupts:
     renderInterrupt(outf, device, peripheral, irq)
@@ -78,17 +74,13 @@ declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{periphera
 proc renderInterrupt(outf, device, peripheral, interrupt) =
   write(
     outf,
-    fmt"""
-declareInterrupt(peripheralName = {peripheral.name}, interruptName = {interrupt.name}, interruptValue = {interrupt.value}, interruptDesc = "{interrupt.description}")
-""",
+    &"declareInterrupt(peripheralName = {peripheral.name}, interruptName = {interrupt.name}, interruptValue = {interrupt.value}, interruptDesc = \"{interrupt.description}\")",
   )
 
 proc renderRegister(outf, device, peripheral, register) =
   write(
     outf,
-    fmt"""
-declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, registerDesc = "{register.description}")
-""",
+    &"declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, registerDesc = \"{register.description}\")",
   )
   for f in register.fields:
     renderField(outf, device, peripheral, register, f)
@@ -96,7 +88,5 @@ declareRegister(peripheralName = {peripheral.name}, registerName = {register.nam
 proc renderField(outf, device, peripheral, register, field) =
   write(
     outf,
-    fmt"""
-declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, access = {field.access}, fieldDesc = "{field.description}")
-""",
+    &"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, access = {field.access}, fieldDesc = \"{field.description}\")",
   )
