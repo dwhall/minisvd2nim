@@ -179,9 +179,9 @@ func parseSvdField(fieldNode: XmlNode): SvdRegField =
       fieldNode.child("access").innerText
   result.access =
     case accessText
-    of "read-only": SvdRegFieldAccess.readOnly
+    of "write-only": SvdRegFieldAccess.writeOnly
     of "read-write": SvdRegFieldAccess.readWrite
-    else: SvdRegFieldAccess.writeOnly
+    else: SvdRegFieldAccess.readOnly
 
 func parseAnyInt(s: string): int =
   let lowercase = s.toLower()
