@@ -2,13 +2,9 @@ type
   SvdObject* = object of RootObj
     name*: string
 
-  SvdCpuEndian* = enum
-    littleEndian
-    bigEndian
-
   SvdCpu* = object of SvdObject
     revision*: string
-    endian*: SvdCpuEndian
+    endian*: Endianness
     mpuPresent*: bool
     fpuPresent*: bool
     nvicPrioBits*: int

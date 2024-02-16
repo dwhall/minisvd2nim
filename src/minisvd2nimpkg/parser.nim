@@ -71,10 +71,7 @@ func parseSvdCpu(cpuNode: XmlNode): ref SvdCpu =
   result.name = cpuNode.child("name").innerText
   result.revision = cpuNode.child("revision").innerText
   result.endian =
-    if cpuNode.child("endian").innerText == "little":
-      SvdCpuEndian.littleEndian
-    else:
-      SvdCpuEndian.bigEndian
+    if cpuNode.child("endian").innerText == "little": littleEndian else: bigEndian
   result.mpuPresent = cpuNode.child("mpuPresent").innerText == "true"
   result.fpuPresent = cpuNode.child("fpuPresent").innerText == "true"
   result.nvicPrioBits = parseAnyInt(cpuNode.child("nvicPrioBits").innerText)
