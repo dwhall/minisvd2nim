@@ -13,5 +13,5 @@ test "the CLI should run with no input":
   check 0 == execShellCmd(cmd)
 
 test "the CLI should process the example STM32 .svd file":
-  let cmd = fullExe.string & " tests" / "STM32F446_v1_7.svd > stm32f446.nim"
+  let cmd = fullExe.string & " tests" / "STM32F446_v1_7.svd > example" / "stm32f446.nim"
   check 0 == execShellCmd(cmd)
