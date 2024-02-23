@@ -57,14 +57,14 @@ template declareRegister*(
       volatileLoad(`peripheralName _ registerName`)
 
   when writeAccess:
-    template `registerName =`*(
+    template `registerName=`*(
         base: static `peripheralName Base`, val: `peripheralName _ registerName Val`
     ) =
       volatileStore(`peripheralName _ registerName`, val)
-    template `registerName =`*(
-        base: static `peripheralName Base`, val: `uint32`
-    ) =
+
+    template `registerName=`*(base: static `peripheralName Base`, val: `uint32`) =
       volatileStore(`peripheralName _ registerName`, val)
+
     template write*(regVal: `peripheralName _ registerName Val`) =
       volatileStore(`peripheralName _ registerName`, regVal)
 
@@ -99,4 +99,6 @@ template declareField*(
     template `fieldName`*(
         regVal: `peripheralName _ registerName Val`, fieldVal: uint32
     ): `peripheralName _ registerName Val` =
-      setField[`peripheralName _ registerName Val`](regVal, bitOffset, bitWidth, fieldVal)
+      setField[`peripheralName _ registerName Val`](
+        regVal, bitOffset, bitWidth, fieldVal
+      )
