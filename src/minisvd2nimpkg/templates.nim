@@ -3,6 +3,9 @@
 ## This allows the programmer to change the final form of the Nim source
 ## without changing and recompiling minisvd2nim.
 
+import std/bitops
+import std/volatile
+
 # First some types that the templates will need
 type RegisterVal = uint32
 
@@ -36,6 +39,8 @@ template declareRegister*(
     peripheralName: untyped,
     registerName: untyped,
     addressOffset: static uint32,
+    readAccess: static bool,
+    writeAccess: static bool,
     registerDesc: static string,
 ): untyped =
   type `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
@@ -44,15 +49,35 @@ template declareRegister*(
 
   const `peripheralName _ registerName` {.inject.} =
     cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset)
-  template `registerName`*(
-      base: static `peripheralName Base`
-  ): `peripheralName _ registerName Val` =
-    volatileLoad(`registerName _ peripheralName`)
 
-  template `registerName=`*(
-      base: static `peripheralName Base`, val: `peripheralName _ registerName Val`
-  ) =
-    volatileStore(`peripheralName _ registerName`, val)
+  when readAccess:
+    template `registerName`*(
+        base: static `peripheralName Base`
+    ): `peripheralName _ registerName Val` =
+      volatileLoad(`peripheralName _ registerName`)
+
+  when writeAccess:
+    template `registerName =`*(
+        base: static `peripheralName Base`, val: `peripheralName _ registerName Val`
+    ) =
+      volatileStore(`peripheralName _ registerName`, val)
+    template `registerName =`*(
+        base: static `peripheralName Base`, val: `uint32`
+    ) =
+      volatileStore(`peripheralName _ registerName`, val)
+    template write*(regVal: `peripheralName _ registerName Val`) =
+      volatileStore(`peripheralName _ registerName`, regVal)
+
+func setField[T](
+    regVal: T, bitOffset: static uint32, bitWidth: static uint32, fieldVal: RegisterVal
+): T {.inline.} =
+  ## Incoming fieldVal is bit-0-based (not yet shifted into final position)
+  const bitMask = toMask[uint32](bitOffset .. bitOffset + bitWidth - 1)
+  assert((fieldVal and bitnot(bitMask)) == 0, "fieldVal exceeds bit mask")
+  var r = regVal.RegisterVal
+  r = r and bitnot(bitMask shl bitOffset)
+  r = r or ((fieldVal and bitMask) shl bitOffset)
+  r.T
 
 template declareField*(
     peripheralName: untyped,
@@ -60,7 +85,18 @@ template declareField*(
     fieldName: untyped,
     bitOffset: static int,
     bitWidth: static int,
-    access: untyped,
+    readAccess: static bool,
+    writeAccess: static bool,
     fieldDesc: static string,
 ) =
-  discard
+  when readAccess:
+    template `fieldName`*(
+        regVal: `peripheralName _ registerName Val`
+    ): `peripheralName _ registerName Val` =
+      getField[`peripheralName _ registerName Val`](regVal, bitOffset, bitWidth)
+
+  when writeAccess:
+    template `fieldName`*(
+        regVal: `peripheralName _ registerName Val`, fieldVal: uint32
+    ): `peripheralName _ registerName Val` =
+      setField[`peripheralName _ registerName Val`](regVal, bitOffset, bitWidth, fieldVal)

@@ -16,6 +16,7 @@ using
   interrupt: SvdInterrupt
   register: SvdRegister
   field: SvdRegField
+  access: SvdRegFieldAccess
 
 proc renderHeader(outf, device)
 proc renderDevice(outf, device)
@@ -24,8 +25,8 @@ proc renderPeripheral(outf, device, peripheral)
 proc renderInterrupt(outf, device, peripheral, interrupt)
 proc renderRegister(outf, device, peripheral, register)
 proc renderField(outf, device, peripheral, register, field)
-func readAccess(access: SvdRegFieldAccess): bool
-func writeAccess(access: SvdRegFieldAccess): bool
+func readAccess(access): bool
+func writeAccess(access): bool
 
 proc renderNimFromSvd*(outf, device) =
   renderHeader(outf, device)
@@ -67,9 +68,12 @@ proc renderInterrupt(outf, device, peripheral, interrupt) =
   outf.write(&"declareInterrupt(peripheralName = {peripheral.name}, interruptName = {interrupt.name}, interruptValue = {interrupt.value}, interruptDesc = \"{interrupt.description}\")\n")
 
 proc renderRegister(outf, device, peripheral, register) =
-  outf.write(&"declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, registerDesc = \"{register.description}\")\n")
+  outf.write(&"declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\")\n")
   for f in register.fields:
     renderField(outf, device, peripheral, register, f)
 
 proc renderField(outf, device, peripheral, register, field) =
-  outf.write(&"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, access = {field.access}, fieldDesc = \"{field.description}\")\n")
+  outf.write(&"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, fieldDesc = \"{field.description}\")\n")
+
+func readAccess(access): bool = access == readWrite or access == readOnly
+func writeAccess(access): bool = access == readWrite or access == writeOnly

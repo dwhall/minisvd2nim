@@ -26,6 +26,7 @@ type
     addressOffset*: int
     size*: int
     resetValue*: int
+    access*: SvdRegFieldAccess
     fields*: seq[SvdRegField]
 
   SvdInterrupt* = object of SvdObject

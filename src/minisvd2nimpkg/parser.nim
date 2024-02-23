@@ -36,6 +36,7 @@ func parseSvdInterrupt(interruptNode: XmlNode): SvdInterrupt
 func parseSvdAddressBlock(addressBlockNode: XmlNode): ref SvdAddressBlock
 func parseSvdRegisters(registersNode: XmlNode, registers: var seq[SvdRegister])
 func parseSvdRegister(registerNode: XmlNode): SvdRegister
+func parseSvdAccess(accessNode: XmlNode, access: var SvdRegFieldAccess)
 func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField])
 func parseSvdField(fieldNode: XmlNode): SvdRegField
 func parseAnyInt(s: string): int
@@ -158,8 +159,18 @@ func parseSvdRegister(registerNode: XmlNode): SvdRegister =
   result.description = removeWhitespace(registerNode.child("description").innerText)
   result.addressOffset = parseAnyInt(registerNode.child("addressOffset").innerText)
   result.resetValue = parseAnyInt(registerNode.child("resetValue").innerText)
+  let accessNode = registerNode.child("access")
+  parseSvdAccess(accessNode, result.access)
   let fieldsNode = registerNode.child("fields")
   parseSvdFields(fieldsNode, result.fields)
+
+func parseSvdAccess(accessNode: XmlNode, access: var SvdRegFieldAccess) =
+  let accessText = if isNil(accessNode): "read-only" else: accessNode.innerText
+  access =
+    case accessText
+    of "write-only": SvdRegFieldAccess.writeOnly
+    of "read-write": SvdRegFieldAccess.readWrite
+    else: SvdRegFieldAccess.readOnly
 
 func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField]) =
   if isNil(fieldsNode):
@@ -173,12 +184,7 @@ func parseSvdField(fieldNode: XmlNode): SvdRegField =
   result.bitOffset = parseInt(fieldNode.child("bitOffset").innerText)
   result.bitWidth = parseInt(fieldNode.child("bitWidth").innerText)
   let accessNode = fieldNode.child("access")
-  let accessText = if isNil(accessNode): "read-only" else: accessNode.innerText
-  result.access =
-    case accessText
-    of "write-only": SvdRegFieldAccess.writeOnly
-    of "read-write": SvdRegFieldAccess.readWrite
-    else: SvdRegFieldAccess.readOnly
+  parseSvdAccess(accessNode, result.access)
 
 func parseAnyInt(s: string): int =
   let lowercase = s.toLower()
