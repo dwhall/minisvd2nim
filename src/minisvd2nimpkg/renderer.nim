@@ -24,6 +24,8 @@ proc renderPeripheral(outf, device, peripheral)
 proc renderInterrupt(outf, device, peripheral, interrupt)
 proc renderRegister(outf, device, peripheral, register)
 proc renderField(outf, device, peripheral, register, field)
+func readAccess(access: SvdRegFieldAccess): bool
+func writeAccess(access: SvdRegFieldAccess): bool
 
 proc renderNimFromSvd*(outf, device) =
   renderHeader(outf, device)
@@ -33,8 +35,7 @@ proc renderNimFromSvd*(outf, device) =
 proc renderHeader(outf, device) =
   let filenameParts = getAppFilename().splitFile()
   let toolName = filenameParts.name & filenameParts.ext
-  outf.write(
-    &"""
+  outf.write(&"""
 # This file is auto-generated.
 # Edits will be lost if the tool is run again.
 #
@@ -43,44 +44,32 @@ proc renderHeader(outf, device) =
 # Tool args:            {commandLineParams()}
 # Input file version:   {device.version}
 
-import std/volatile
-
 from minisvd2nim import templates
 
 """
   )
 
 proc renderDevice(outf, device) =
-  outf.write(
-    &"declareDevice(deviceName = {device.name}, mpuPresent = {device.cpu.mpuPresent}, fpuPresent = {device.cpu.fpuPresent}, nvicPrioBits = {device.cpu.nvicPrioBits})"
-  )
+  outf.write(&"declareDevice(deviceName = {device.name}, mpuPresent = {device.cpu.mpuPresent}, fpuPresent = {device.cpu.fpuPresent}, nvicPrioBits = {device.cpu.nvicPrioBits})\n")
 
 proc renderPeripherals(outf, device) =
   for p in device.peripherals:
     renderPeripheral(outf, device, p)
 
 proc renderPeripheral(outf, device, peripheral) =
-  outf.write(
-    &"declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u32, peripheralDesc = \"{peripheral.description}\")"
-  )
+  outf.write(&"declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u32, peripheralDesc = \"{peripheral.description}\")\n")
   for irq in peripheral.interrupts:
     renderInterrupt(outf, device, peripheral, irq)
   for r in peripheral.registers:
     renderRegister(outf, device, peripheral, r)
 
 proc renderInterrupt(outf, device, peripheral, interrupt) =
-  outf.write(
-    &"declareInterrupt(peripheralName = {peripheral.name}, interruptName = {interrupt.name}, interruptValue = {interrupt.value}, interruptDesc = \"{interrupt.description}\")"
-  )
+  outf.write(&"declareInterrupt(peripheralName = {peripheral.name}, interruptName = {interrupt.name}, interruptValue = {interrupt.value}, interruptDesc = \"{interrupt.description}\")\n")
 
 proc renderRegister(outf, device, peripheral, register) =
-  outf.write(
-    &"declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, registerDesc = \"{register.description}\")"
-  )
+  outf.write(&"declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, registerDesc = \"{register.description}\")\n")
   for f in register.fields:
     renderField(outf, device, peripheral, register, f)
 
 proc renderField(outf, device, peripheral, register, field) =
-  outf.write(
-    &"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, access = {field.access}, fieldDesc = \"{field.description}\")"
-  )
+  outf.write(&"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, access = {field.access}, fieldDesc = \"{field.description}\")\n")
