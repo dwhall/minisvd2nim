@@ -14,7 +14,7 @@ test "there shall be a procedure to render nim source":
   check compiles(renderNimFromSvd(stdout, dev_test))
 
 test "DEBUG: generates a file to examine by hand":
-  var f = open("tests" / "dwh_test_render.nim", fmWrite)
+  var f = open("tests" / "generated_by_test_render.nim", fmWrite)
   renderNimFromSvd(f, dev_test)
 
 test "the render procedure shall output a header comment":
