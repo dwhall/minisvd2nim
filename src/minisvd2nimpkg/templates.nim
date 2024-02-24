@@ -68,15 +68,26 @@ template declareRegister*(
     template write*(regVal: `peripheralName _ registerName Val`) =
       volatileStore(`peripheralName _ registerName`, regVal)
 
+func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
+  ## Returns the field from the regVal and down-shifts it to no bit offset
+  doAssert bitOffset < sizeof(RegisterVal) * 8, "bitOffset exceeds register size"
+  doAssert bitWidth < sizeof(RegisterVal) * 8, "bitWidth exceeds register size"
+  const bitEnd = bitOffset + bitWidth - 1
+  const bitMask = toMask[uint32](bitOffset .. bitEnd)
+  var r = regVal.RegisterVal
+  r = r and bitMask
+  r = r shr bitOffset
+  r.T
+
 func setField[T](
-    regVal: T, bitOffset: static uint32, bitWidth: static uint32, fieldVal: RegisterVal
+    regVal: T, bitOffset: static int, bitWidth: static int, fieldVal: RegisterVal
 ): T {.inline.} =
   ## Incoming fieldVal is bit-0-based (not yet shifted into final position)
   const bitMask = toMask[uint32](bitOffset .. bitOffset + bitWidth - 1)
   assert((fieldVal and bitnot(bitMask)) == 0, "fieldVal exceeds bit mask")
   var r = regVal.RegisterVal
-  r = r and bitnot(bitMask shl bitOffset)
-  r = r or ((fieldVal and bitMask) shl bitOffset)
+  r = r and bitnot(bitMask)
+  r = r or ((fieldVal shl bitOffset) and bitMask)
   r.T
 
 template declareField*(
