@@ -2,74 +2,59 @@
 ## parses the given .svd input file and outputs nim source to stdout.
 ##
 
-import std/files
-import std/parseopt
-import std/paths
-import std/strutils
+import std/[files, parseopt, paths, strutils]
 
 import minisvd2nimpkg/parser
 import minisvd2nimpkg/renderer
 import minisvd2nimpkg/versions
 
-const Usage = """
+const Version = "version: " & getVersion() & "\p"
+const Usage = "minisvd2nim [option] [<input.svd>]\p"
+const Help = """
 minisvd2nim - Generate Nim source from System View Description XML
 
 Copyright 2024 Dean Hall.  See LICENSE.txt for details.
 
 Usage:
-  minisvd2nim [option] [<input.svd>]
+""" & Usage & """
 
 Options:
   --version             show the version
   --help                show this help
 """
 
-proc parseArgs(): tuple[fn: Path]
-proc writeHelp()
-proc writeVersion()
-proc writeArgumentError(fn: string)
+proc parseArgs(): Path
+proc writeMsgAndQuit(msg: string)
 
 proc main() =
-  var args:tuple[fn: Path]
-  args = parseArgs()
-  let svd = parseSvdFile(args.fn)
+  let fn = parseArgs()
+  let svd = parseSvdFile(fn)
   renderNimFromSvd(stdout, svd)
 
-proc parseArgs(): tuple[fn: Path] =
-  ## Acts on any options
-  ## Returns
+proc parseArgs(): Path =
+  ## Returns only if a valid file is given
+  ## otherwise it acts on any options and exits
   for kind, key, val in getopt():
     case kind
     of cmdLongOption, cmdShortOption:
       case normalize(key)
-      of "help", "h": writeHelp()
-      of "version", "v": writeVersion()
+      of "version", "v": writeMsgAndQuit(Version)
+      else: writeMsgAndQuit(Help)
     of cmdArgument:
       let fn = absolutePath(Path(key))
-      if fileExists(fn):
-        result.fn = Path(key)
-        break
+      if key.len > 0 and fileExists(fn):
+        return Path(key)
       else:
-        writeArgumentError(key)
-    else:
-      writeHelp()
+        let error = "File does not exist: " & fn.string & "\p"
+        writeMsgAndQuit(error)
+    of cmdEnd:
+      break
+  writeMsgAndQuit(Usage)
 
-proc writeHelp() =
-  stdout.write(Usage)
+proc writeMsgAndQuit(msg: string) =
+  stdout.write(msg)
   stdout.flushFile()
   quit(0)
-
-proc writeVersion() =
-  stdout.write("version: " & getVersion() & "\n")
-  stdout.flushFile()
-  quit(0)
-
-proc writeArgumentError(fn: string) =
-  stderr.write("File does not exist: " & fn & "\n")
-  stderr.flushFile()
-  quit(0)
-
-
 
 if isMainModule:
   main()
