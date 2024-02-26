@@ -46,7 +46,7 @@ proc renderHeader(outf, device) =
 # Tool args:            {commandLineParams()}
 # Input file version:   {device.version}
 
-from minisvd2nim import templates
+import minisvd2nimpkg/templates
 
 """
   )
