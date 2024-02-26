@@ -70,9 +70,13 @@ template declareRegister*(
 
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
   ## Returns the field from the regVal and down-shifts it to no bit offset
+  doAssert bitOffset >= 0, "bitOffset must not be negative"
   doAssert bitOffset < sizeof(RegisterVal) * 8, "bitOffset exceeds register size"
+  doAssert bitWidth > 0, "bitWidth must be greater than zero"
   doAssert bitWidth < sizeof(RegisterVal) * 8, "bitWidth exceeds register size"
   const bitEnd = bitOffset + bitWidth - 1
+  doAssert bitEnd >= 0, "bitEnd must not be negative"
+  doAssert bitEnd < 32, "bit mask does not fit within u32"
   const bitMask = toMask[uint32](bitOffset .. bitEnd)
   var r = regVal.RegisterVal
   r = r and bitMask
@@ -84,7 +88,14 @@ func setField[T](
 ): T {.inline.} =
   ## Puts the fieldVal into only the offset+width-bits of the given regVal.
   ## Incoming fieldVal is bit-0-based (not yet shifted into final position)
-  const bitMask = toMask[uint32](bitOffset .. bitOffset + bitWidth - 1)
+  doAssert bitOffset >= 0, "bitOffset must not be negative"
+  doAssert bitOffset < sizeof(RegisterVal) * 8, "bitOffset exceeds register size"
+  doAssert bitWidth > 0, "bitWidth must be greater than zero"
+  doAssert bitWidth < sizeof(RegisterVal) * 8, "bitWidth exceeds register size"
+  const bitEnd = bitOffset + bitWidth - 1
+  doAssert bitEnd >= 0, "bitEnd must not be negative"
+  doAssert bitEnd < 32, "bit mask does not fit within u32"
+  const bitMask = toMask[uint32](bitOffset .. bitEnd)
   # TODO: how should we handle a runtime value that exceeds bitWidth?
   # assert(((fieldVal shl bitOffset) and bitnot(bitMask)) == 0, "fieldVal exceeds bitWidth")
   var r = regVal.RegisterVal
