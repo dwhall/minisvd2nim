@@ -82,9 +82,11 @@ func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.in
 func setField[T](
     regVal: T, bitOffset: static int, bitWidth: static int, fieldVal: RegisterVal
 ): T {.inline.} =
+  ## Puts the fieldVal into only the offset+width-bits of the given regVal.
   ## Incoming fieldVal is bit-0-based (not yet shifted into final position)
   const bitMask = toMask[uint32](bitOffset .. bitOffset + bitWidth - 1)
-  assert((fieldVal and bitnot(bitMask)) == 0, "fieldVal exceeds bit mask")
+  # TODO: how should we handle a runtime value that exceeds bitWidth?
+  # assert(((fieldVal shl bitOffset) and bitnot(bitMask)) == 0, "fieldVal exceeds bitWidth")
   var r = regVal.RegisterVal
   r = r and bitnot(bitMask)
   r = r or ((fieldVal shl bitOffset) and bitMask)
