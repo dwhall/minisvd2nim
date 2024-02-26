@@ -2,38 +2,74 @@
 ## parses the given .svd input file and outputs nim source to stdout.
 ##
 
-import std/cmdline
 import std/files
+import std/parseopt
 import std/paths
-import std/strformat
+import std/strutils
 
 import minisvd2nimpkg/parser
 import minisvd2nimpkg/renderer
+import minisvd2nimpkg/versions
 
-type SvdMainArgs = tuple[fn: Path]
+const Usage = """
+minisvd2nim - Generate Nim source from System View Description XML
 
-proc parseArgs(params: seq[string], args: var SvdMainArgs): bool
+Copyright 2024 Dean Hall.  See LICENSE.txt for details.
+
+Usage:
+  minisvd2nim [option] [<input.svd>]
+
+Options:
+  --version             show the version
+  --help                show this help
+"""
+
+proc parseArgs(): tuple[fn: Path]
+proc writeHelp()
+proc writeVersion()
+proc writeArgumentError(fn: string)
 
 proc main() =
-  var args:SvdMainArgs
-  let params = commandLineParams()
-  if parseArgs(params, args):
-    let svd = parseSvdFile(args.fn)
-    renderNimFromSvd(stdout, svd)
+  var args:tuple[fn: Path]
+  args = parseArgs()
+  let svd = parseSvdFile(args.fn)
+  renderNimFromSvd(stdout, svd)
 
-proc parseArgs(params: seq[string], args: var SvdMainArgs): bool =
-  ## Returns validity of the command line parameters.
-  ## If they are valid, returns them by reference
-  if len(params) == 1:
-    let fn = absolutePath(Path(params[0]))
-    if fileExists(fn):
-      args.fn = fn
-      return true
+proc parseArgs(): tuple[fn: Path] =
+  ## Acts on any options
+  ## Returns
+  for kind, key, val in getopt():
+    case kind
+    of cmdLongOption, cmdShortOption:
+      case normalize(key)
+      of "help", "h": writeHelp()
+      of "version", "v": writeVersion()
+    of cmdArgument:
+      let fn = absolutePath(Path(key))
+      if fileExists(fn):
+        result.fn = Path(key)
+        break
+      else:
+        writeArgumentError(key)
     else:
-      stderr.write(fmt"File not found: {fn.string}{'\n'}")
-  else:
-    stderr.write("Usage: minisvd2nim <input.svd>\n")
-  return false
+      writeHelp()
+
+proc writeHelp() =
+  stdout.write(Usage)
+  stdout.flushFile()
+  quit(0)
+
+proc writeVersion() =
+  stdout.write("version: " & getVersion() & "\n")
+  stdout.flushFile()
+  quit(0)
+
+proc writeArgumentError(fn: string) =
+  stderr.write("File does not exist: " & fn & "\n")
+  stderr.flushFile()
+  quit(0)
+
+
 
 if isMainModule:
   main()
