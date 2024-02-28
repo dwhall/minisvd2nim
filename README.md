@@ -226,6 +226,19 @@ template FIELD*(regVal: PERIPH_REGVal, fieldVal: uint32): PERIPH_REGVal =
 You can look at the source if you want to see the implementations
 of `getField` and `setField`.
 
+## How to hack on minisvd2nim
+
+There are two parts to `minisvd2nim` parsing and rendering the SVD (.xml) file;
+and using templates to create usable code from the .nim file full of declarations.
+Once we get ALL possible XML nodes parsed and rendered, then what remains is
+creating templates for our applications' needs.
+
+To experiment with the templates, you need to do these three things:
+1) copy `templates.nim` to your project and put it in the same place as
+   your `device.nim`
+2) edit your `device.nim` to `import templates` so Nim grabs the local copy
+   instead of the one from the library.
+3) edit the local `templates.nim` to generate the output you want.
 
 ## The author would like to thank
 
