@@ -60,13 +60,14 @@ This means use hard-coded constants and static parameters wherever possible.
 ## How to use minisvd2nim
 
 0) Install minisvd2nim via nimble
-1) Google for the latest .svd for your ARM CortexM device.
+1) Google for the latest .svd for your ARM CortexM device
 2) `$ minisvd2nim device.svd > device.nim`
-3) In your project, `import device`
+3) Put `device.nim` in your project
+4) In your project, `import device` wherever you access the device
 
 ## How to access the microcontroller
 
-I will tell you how to read and write the micro's registers,
+I will tell you how to read and write from/to the micro,
 but I can't tell you how to make it sing and dance.
 The following Nim code shows how to read and write
 a ficticious register (REG) and its fields (FIELD1 and FIELD2)
@@ -75,11 +76,12 @@ of a peripheral (PERIPH).
 ```nim
 import device
 
-# read the register to a distinct type
+# read the register (v is a distinct type)
 var v = PERIPH.REG
 
-# this will fail compilation because of the distinct type
+# these will fail compilation because of the distinct type
 v = v + 1
+v = v + 1'u32
 
 # read the register as a uint32
 var w = PERIPH.REG.uint32
@@ -110,7 +112,7 @@ g = g + 1'u32
 PERIPH.REG.FIELD1 = g
 
 # read-modify-write one field in the register
-# the value given in parenthesis (42) will be
+# the value given in parentheses (42) will be
 # left-shifted up to the field's offset.
 # The bits not in the field are unaffected.
 PERIPH.REG.FIELD1(42).write()
@@ -122,8 +124,8 @@ PERIPH.REG.FIELD1(42)
 # the value given in parentheses will be
 # left-shifted up to the field's offset
 PERIPH.REG
-      .FIELD1(42)
-      .FIELD2(6*7)
+      .FIELD1(g)
+      .FIELD2(42)
       .write()
 ```
 
@@ -139,9 +141,9 @@ that we've been calling `device.nim` has a bunch of lines
 that begin with `declareDevice`, `declarePeripheral`,
 `declareRegister`, `declareField`, etc.
 
-All of those `declare` calls are processed by Nim templates
-in the templates module.  So here is what each of those templates
-would output, with some actual and imagined values for example.
+All of those `declare` calls are processed by Nim templates from the
+`minisvd2nimpkg/templates` module.  So here is what each of those
+templates would output, with some actual and imagined values for example.
 (These code examples may become out of date if I update
 the templates module and forget to update this doc)
 
@@ -215,7 +217,7 @@ template FIELD*(regVal: PERIPH_REGVal): PERIPH_REGVal =
   getField[PERIPH_REGVal](regVal, bitOffset, bitWidth)
 ```
 
-When the field has write access permissions, these become available:
+When the field has write access permissions, this becomes available:
 ```nim
 template FIELD*(regVal: PERIPH_REGVal, fieldVal: uint32): PERIPH_REGVal =
   setField[PERIPH_REGVal](regVal, bitOffset, bitWidth, fieldVal)
@@ -227,5 +229,5 @@ of `getField` and `setField`.
 
 ## The author would like to thank
 
-* @ElegantBeef for answering my Nim questions on the forum.
+* @ElegantBeef and @Araq for answering my Nim questions on the [forum](https://forum.nim-lang.org/).
 * https://asciiflow.com for making ASCII art easy
