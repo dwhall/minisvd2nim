@@ -62,7 +62,7 @@ template declareRegister*(
     ) =
       volatileStore(`peripheralName _ registerName`, val)
 
-    template `registerName=`*(base: static `peripheralName Base`, val: `uint32`) =
+    template `registerName=`*(base: static `peripheralName Base`, val: uint32) =
       volatileStore(`peripheralName _ registerName`, `peripheralName _ registerName Val`(val))
 
     template write*(regVal: `peripheralName _ registerName Val`) =
