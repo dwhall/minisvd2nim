@@ -38,11 +38,11 @@ and manufacturers of ARM based microcontrollers.
 
 ## If svd2nim exists then why make minisvd2nim?
 
-1) I wanted to alter the syntax used to read and write the registers and fields.
+1) I wanted to alter the syntax used to read from and write to registers and fields.
 2) The size reductions I discovered would require a re-write of svd2nim
    that was more work than starting from scratch.
 3) I wanted to use templates to emit code so that the minisvd2nim executable
-   would not need to be compiled to experiment with altering the output syntax.
+   would not need to be re-compiled to alter the final output.
 
 ## Okay, so tell us about minisvd2min
 
@@ -54,7 +54,7 @@ The templates are around 120 lines of some mind-bending shit.
 The second reason it is called "mini" is because the resulting code,
 when compiled to a binary, is as small as I can make it.
 I'm always open to readable PRs to make the resulting code smaller.
-The best way to reduce code size is to do as much at compile-time as possible.
+The best way to reduce code size is to do as much as possible at compile-time.
 This means use hard-coded constants and static parameters wherever possible.
 
 ## How to use minisvd2nim
@@ -65,13 +65,12 @@ This means use hard-coded constants and static parameters wherever possible.
 3) Put `device.nim` in your project
 4) In your project, `import device` wherever you access the device
 
-## How to access the microcontroller
+## How to access the device
 
-I will tell you how to read and write from/to the micro,
+I will tell you how to read from and write to the device,
 but I can't tell you how to make it sing and dance.
-The following Nim code shows how to read and write
-a ficticious register (REG) and its fields (FIELD1 and FIELD2)
-of a peripheral (PERIPH).
+The following Nim code shows how to access a ficticious register (REG)
+of a peripheral (PERIPH) and its fields (FIELD1 and FIELD2).
 
 ```nim
 import device
@@ -79,50 +78,55 @@ import device
 # read the register (v is a distinct type)
 var v = PERIPH.REG
 
-# these will fail compilation because of the distinct type
+# ERROR cannot modify the distinct type with normal integers
 v = v + 1
 v = v + 1'u32
 
 # read the register as a uint32
 var w = PERIPH.REG.uint32
 
-# when you do math with a uint32, be sure
-# to specify the literals as uint32 as well.
+# modify a uint32 with uint32 literals
 w = w + 1'u32
 
-# write to the register (accepts a uint32)
+# write to the register (accepts the register's distinct type)
+PERIPH.REG = v
+
+# write to the register (also accepts a uint32)
 PERIPH.REG = w
 
-# read a field from the register
-# the field is right-shifted to occupy bit 0, up to the field's width
+# read a field from the register (f is a distinct type)
+# the field is right-shifted to occupy bit 0,
+# up to the field's width
 var f = PERIPH.REG.FIELD1
 
-# this will fail compilation because of the distinct type
+# ERROR cannot modify the distinct type with normal integers
 f = f + 1'u32
 
 # read the field as a uint32
 # the field is right-shifted to occupy bit 0,
 # up to the field's width
 var g = PERIPH.REG.FIELD1.uint32
+
+# modify a uint32 with uint32 literals
 g = g + 1'u32
 
-# this is a compile-time error (for now).
+# ERROR this is a compile-time error (for now).
 # I'd like to make this work, but right now
 # it would have an unexpected read.
 PERIPH.REG.FIELD1 = g
 
-# read-modify-write one field in the register
-# the value given in parentheses (42) will be
-# left-shifted up to the field's offset.
-# The bits not in the field are unaffected.
+# read-modify-write one field in the register.
+# the uint32 value given in parentheses (42) will be
+# left-shifted to the field's offset.
+# The register's other bits are not affected.
 PERIPH.REG.FIELD1(42).write()
 
-# this by itself is a compile-time error
+# ERROR this by itself is a compile-time error
 PERIPH.REG.FIELD1(42)
 
 # read-modify-write more than one field in the register.
-# the value given in parentheses will be
-# left-shifted up to the field's offset
+# the uint32 value given in parentheses will be
+# left-shifted to the field's offset
 PERIPH.REG
       .FIELD1(g)
       .FIELD2(42)
@@ -131,9 +135,9 @@ PERIPH.REG
 
 ## The clever bits you don't see
 
-The tricks I used to create small code is done by the code
-that is output from the templates.  So you will never see
-that code.  However, I've reproduced it here to help fellow
+The tricks I used to create small code is done by the output
+of the templates.  So you will never see that code.
+However, I've approximated it here to help fellow
 programmers understand what is going on under the hood.
 
 When you run minisvd2nim on an .svd file, the resulting file
@@ -142,7 +146,7 @@ that begin with `declareDevice`, `declarePeripheral`,
 `declareRegister`, `declareField`, etc.
 
 All of those `declare` calls are processed by Nim templates from the
-`minisvd2nimpkg/templates` module.  So here is what each of those
+`minisvd2nimpkg/templates` module.  Below is what each of those
 templates would output, with some actual and imagined values for example.
 (These code examples may become out of date if I update
 the templates module and forget to update this doc)
@@ -194,8 +198,8 @@ template REG*(base: static PERIPHBase): PERIPH_REGVal =
 ```
 Notice that the `declareRegister` template is emitting this template
 and `volatileLoad` itself is a template.  I told you there was some
-mind-bending shit.  But this also means that any errors here will have
-near-useless error messages.
+mind-bending shit.  But a side-effect of all this is that any errors
+here will have messages that are difficult to understand.
 
 When the register has write access permissions, these become available:
 ```nim
@@ -223,13 +227,13 @@ template FIELD*(regVal: PERIPH_REGVal, fieldVal: uint32): PERIPH_REGVal =
   setField[PERIPH_REGVal](regVal, bitOffset, bitWidth, fieldVal)
 ```
 
-You can look at the source if you want to see the implementations
-of `getField` and `setField`.
+You can look at [the source](https://github.com/dwhall/minisvd2nim/blob/main/src/minisvd2nimpkg/templates.nim#L71)
+if you want to see the implementations of `getField` and `setField`.
 
 ## How to hack on minisvd2nim
 
 There are two parts to `minisvd2nim` parsing and rendering the SVD (.xml) file;
-and using templates to create usable code from the .nim file full of declarations.
+and using templates to create usable code from the device file.
 Once we get ALL possible XML nodes parsed and rendered, then what remains is
 creating templates for our applications' needs.
 
