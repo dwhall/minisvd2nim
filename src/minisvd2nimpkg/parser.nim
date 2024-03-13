@@ -4,12 +4,7 @@
 ##    https://www.keil.com/pack/doc/CMSIS/SVD/html/svd_Format_pg.html
 ##
 
-import std/paths
-import std/strtabs
-import std/strutils
-import std/tables
-import std/xmlparser
-import std/xmltree
+import std/[paths, strtabs, strutils, tables, xmlparser, xmltree]
 
 import svdtypes
 
