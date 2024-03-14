@@ -51,9 +51,9 @@ template declareRegister*(
     cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset)
 
   when readAccess:
-    template `registerName`*(
+    proc `registerName`*(
         base: static `peripheralName Base`
-    ): `peripheralName _ registerName Val` =
+    ): `peripheralName _ registerName Val` {.inline.} =
       volatileLoad(`peripheralName _ registerName`)
 
   when writeAccess:
@@ -65,7 +65,7 @@ template declareRegister*(
     template `registerName=`*(base: static `peripheralName Base`, val: uint32) =
       volatileStore(`peripheralName _ registerName`, `peripheralName _ registerName Val`(val))
 
-    template write*(regVal: `peripheralName _ registerName Val`) =
+    proc write*(regVal: `peripheralName _ registerName Val`) {.inline.} =
       volatileStore(`peripheralName _ registerName`, regVal)
 
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
@@ -83,25 +83,17 @@ func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.in
   r = r shr bitOffset
   r.T
 
-func setField[T](
-    regVal: T, bitOffset: static int, bitWidth: static int, fieldVal: RegisterVal
+func bitFieldInsert[T](
+    regVal: T, fieldVal: RegisterVal, bitOffset: static int, bitWidth: static int
 ): T {.inline.} =
-  ## Puts the fieldVal into only the offset+width-bits of the given regVal.
-  ## Incoming fieldVal is bit-0-based (not yet shifted into final position)
+  ## Replaces width bits in regVal starting at the low bit position bitOffset,
+  ## with bitWidth bits from fieldVal starting at bit[0]. Other bits in regVal are unchanged.
+  ## Employs the ARMv7 Bit Field Insert instruction for single-cycle execution.
   doAssert bitOffset >= 0, "bitOffset must not be negative"
-  doAssert bitOffset < sizeof(RegisterVal) * 8, "bitOffset exceeds register size"
   doAssert bitWidth > 0, "bitWidth must be greater than zero"
-  doAssert bitWidth < sizeof(RegisterVal) * 8, "bitWidth exceeds register size"
-  const bitEnd = bitOffset + bitWidth - 1
-  doAssert bitEnd >= 0, "bitEnd must not be negative"
-  doAssert bitEnd < 32, "bit mask does not fit within u32"
-  const bitMask = toMask[uint32](bitOffset .. bitEnd)
-  # TODO: how should we handle a runtime value that exceeds bitWidth?
-  # assert(((fieldVal shl bitOffset) and bitnot(bitMask)) == 0, "fieldVal exceeds bitWidth")
-  var r = regVal.RegisterVal
-  r = r and bitnot(bitMask)
-  r = r or ((fieldVal shl bitOffset) and bitMask)
-  r.T
+  doAssert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
+  result = regVal
+  {.emit: ["asm (\"bfi %0, %1, %2, %3\"\n\t: \"+r\" (", result, ")\n\t: \"r\" (", fieldVal, "), \"n\" (", bitOffset, "), \"n\" (", bitWidth, "));\n"].}
 
 template declareField*(
     peripheralName: untyped,
@@ -120,9 +112,9 @@ template declareField*(
       getField[`peripheralName _ registerName Val`](regVal, bitOffset, bitWidth)
 
   when writeAccess:
-    template `fieldName`*(
+    proc `fieldName`*(
         regVal: `peripheralName _ registerName Val`, fieldVal: uint32
-    ): `peripheralName _ registerName Val` =
-      setField[`peripheralName _ registerName Val`](
-        regVal, bitOffset, bitWidth, fieldVal
+    ): `peripheralName _ registerName Val` {.inline.} =
+      bitFieldInsert[`peripheralName _ registerName Val`](
+        regVal, fieldVal, bitOffset, bitWidth
       )
