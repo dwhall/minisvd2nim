@@ -3,8 +3,16 @@
 ## This allows the programmer to change the final form of the Nim source
 ## without changing and recompiling minisvd2nim.
 
-import std/bitops
 import std/volatile
+
+# FIXME: find a compiler-agnostic way to check for support
+# of the BFI instruction
+const __ARM_ARCH {.intdefine.} = 0
+const ArmArchSupportsBfiInstruction: bool = (__ARM_ARCH < 4)
+# If the ARM architecture does not support assembly instructions used below,
+# import the bitops module to perform some operations manually.
+when not ArmArchSupportsBfiInstruction:
+  import std/bitops
 
 # First some types that the templates will need
 type RegisterVal = uint32
@@ -83,7 +91,7 @@ func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.in
   r = r shr bitOffset
   r.T
 
-func bitFieldInsert[T](
+func setField[T](
     regVal: T, fieldVal: RegisterVal, bitOffset: static int, bitWidth: static int
 ): T {.inline.} =
   ## Replaces width bits in regVal starting at the low bit position bitOffset,
@@ -92,8 +100,16 @@ func bitFieldInsert[T](
   doAssert bitOffset >= 0, "bitOffset must not be negative"
   doAssert bitWidth > 0, "bitWidth must be greater than zero"
   doAssert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
-  result = regVal
-  {.emit: ["asm (\"bfi %0, %1, %2, %3\"\n\t: \"+r\" (", result, ")\n\t: \"r\" (", fieldVal, "), \"n\" (", bitOffset, "), \"n\" (", bitWidth, "));\n"].}
+  when ArmArchSupportsBfiInstruction:
+    result = regVal
+    {.emit: ["asm (\"bfi %0, %1, %2, %3\"\n\t: \"+r\" (", result, ")\n\t: \"r\" (", fieldVal, "), \"n\" (", bitOffset, "), \"n\" (", bitWidth, "));\n"].}
+  else:
+    const bitEnd = bitOffset + bitWidth - 1
+    const bitMask = toMask[uint32](bitOffset .. bitEnd)
+    var r = regVal.RegisterVal
+    r = r and bitnot(bitMask)
+    r = r or ((fieldVal shl bitOffset) and bitMask)
+    r.T
 
 template declareField*(
     peripheralName: untyped,
@@ -115,6 +131,6 @@ template declareField*(
     proc `fieldName`*(
         regVal: `peripheralName _ registerName Val`, fieldVal: uint32
     ): `peripheralName _ registerName Val` {.inline.} =
-      bitFieldInsert[`peripheralName _ registerName Val`](
-        regVal, fieldVal, bitOffset, bitWidth
-      )
+        setField[`peripheralName _ registerName Val`](
+          regVal, fieldVal, bitOffset, bitWidth
+        )
