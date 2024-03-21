@@ -2,6 +2,7 @@
 ##
 ## Reference:
 ##    https://www.keil.com/pack/doc/CMSIS/SVD/html/svd_Format_pg.html
+##    https://www.keil.com/pack/doc/CMSIS/SVD/html/elem_registers.html#elem_fields
 ##
 
 import std/[paths, strtabs, strutils, tables, xmlparser, xmltree]
@@ -31,9 +32,12 @@ func parseSvdInterrupt(interruptNode: XmlNode): SvdInterrupt
 func parseSvdAddressBlock(addressBlockNode: XmlNode): ref SvdAddressBlock
 func parseSvdRegisters(registersNode: XmlNode, registers: var seq[SvdRegister])
 func parseSvdRegister(registerNode: XmlNode): SvdRegister
-func parseSvdAccess(accessNode: XmlNode, access: var SvdRegFieldAccess)
+func parseSvdAccess(accessNode: XmlNode, access: var SvdAccess)
 func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField])
+func parseSvdEnumVals(enumValsNode: XmlNode, enumVals: var SvdEnumVals)
+func parseSvdEnumVal(enumValNode: XmlNode): SvdEnumVal
 func parseSvdField(fieldNode: XmlNode): SvdRegField
+func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField)
 func parseAnyInt(s: string): int
 func parseAnyUInt(s: string): uint
 func removeWhitespace(s: string): string
@@ -159,13 +163,13 @@ func parseSvdRegister(registerNode: XmlNode): SvdRegister =
   let fieldsNode = registerNode.child("fields")
   parseSvdFields(fieldsNode, result.fields)
 
-func parseSvdAccess(accessNode: XmlNode, access: var SvdRegFieldAccess) =
+func parseSvdAccess(accessNode: XmlNode, access: var SvdAccess) =
   let accessText = if isNil(accessNode): "read-only" else: accessNode.innerText
   access =
     case accessText
-    of "write-only": SvdRegFieldAccess.writeOnly
-    of "read-write": SvdRegFieldAccess.readWrite
-    else: SvdRegFieldAccess.readOnly
+    of "write-only": SvdAccess.writeOnly
+    of "read-write": SvdAccess.readWrite
+    else: SvdAccess.readOnly
 
 func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField]) =
   if isNil(fieldsNode):
@@ -176,10 +180,51 @@ func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField]) =
 func parseSvdField(fieldNode: XmlNode): SvdRegField =
   result.name = fieldNode.child("name").innerText
   result.description = removeWhitespace(fieldNode.child("description").innerText)
-  result.bitOffset = parseInt(fieldNode.child("bitOffset").innerText)
-  result.bitWidth = parseInt(fieldNode.child("bitWidth").innerText)
+  parseSvdFieldBitRange(fieldNode, result)
   let accessNode = fieldNode.child("access")
   parseSvdAccess(accessNode, result.access)
+  let enumNode = fieldNode.child("enumeratedValues")
+  parseSvdEnumVals(enumNode, result.enumVals)
+
+func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField) =
+  let offsetNode = fieldNode.child("bitOffset")
+  let lsbNode = fieldNode.child("lsb")
+  let bitRangeNode = fieldNode.child("bitRange")
+  if not isNil(offsetNode):
+    regField.bitOffset = parseInt(offsetNode.innerText)
+    regField.bitWidth = parseInt(fieldNode.child("bitWidth").innerText)
+  elif not isNil(lsbNode):
+    let msb = parseInt(fieldNode.child("msb").innerText)
+    let lsb = parseInt(lsbNode.innerText)
+    regField.bitOffset = lsb
+    regField.bitWidth = msb - lsb + 1
+  elif not isNil(bitRangeNode):
+    let rangeText = bitRangeNode.innerText
+    let colonIndex = rangeText.find(':')
+    let msb = parseInt(removeWhitespace(rangeText[1 ..< colonIndex]))
+    let lsb = parseInt(removeWhitespace(rangeText[(colonIndex + 1) ..< (rangeText.len - 1)]))
+    regField.bitOffset = lsb
+    regField.bitWidth = msb - lsb + 1
+
+func parseSvdEnumVals(enumValsNode: XmlNode, enumVals: var SvdEnumVals) =
+  if isNil(enumValsNode):
+    return
+  let name = enumValsNode.child("name")
+  if not isNil(name):
+    enumVals.name = name.innerText
+  let accessNode = enumValsNode.child("access")
+  parseSvdAccess(accessNode, enumVals.usage)
+  for enode in enumValsNode.findAll("enumeratedValue"):
+    enumVals.enumVals.add(parseSvdEnumVal(enode))
+
+func parseSvdEnumVal(enumValNode: XmlNode): SvdEnumVal =
+  result.name = enumValNode.child("name").innerText
+  result.description = removeWhitespace(enumValNode.child("description").innerText)
+  let isDefault = enumValNode.child("isDefault")
+  if not isNil(isDefault):
+    result.isDefault = isDefault.innerText.toLower == "true"
+  else:
+    result.value = parseInt(enumValNode.child("value").innerText).uint32
 
 func parseAnyInt(s: string): int =
   let lowercase = s.toLower()

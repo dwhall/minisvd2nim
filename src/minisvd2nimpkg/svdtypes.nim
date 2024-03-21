@@ -10,23 +10,33 @@ type
     nvicPrioBits*: int
     vendorSystickConfig*: bool
 
-  SvdRegFieldAccess* = enum
+  SvdAccess* = enum
     readWrite
     readOnly
     writeOnly
+
+  SvdEnumVal* = object of SvdObject
+    description*: string
+    isDefault*: bool
+    value*: uint32
+
+  SvdEnumVals* = object of SvdObject
+    usage*: SvdAccess
+    enumVals*: seq[SvdEnumVal]
 
   SvdRegField* = object of SvdObject
     description*: string
     bitOffset*: int
     bitWidth*: int
-    access*: SvdRegFieldAccess
+    access*: SvdAccess
+    enumVals*: SvdEnumVals
 
   SvdRegister* = object of SvdObject
     description*: string
     addressOffset*: int
     size*: int
     resetValue*: int
-    access*: SvdRegFieldAccess
+    access*: SvdAccess
     fields*: seq[SvdRegField]
 
   SvdInterrupt* = object of SvdObject

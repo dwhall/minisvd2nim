@@ -16,7 +16,7 @@ using
   interrupt: SvdInterrupt
   register: SvdRegister
   field: SvdRegField
-  access: SvdRegFieldAccess
+  access: SvdAccess
 
 proc renderHeader(outf, device)
 proc renderDevice(outf, device)

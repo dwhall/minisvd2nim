@@ -42,3 +42,17 @@ test "derived peripherals should overwrite their parent's fields with their own"
       for irq in p.interrupts:
         check irq.name.startsWith("DMA1")
       break
+
+## example.svd comes from: https://www.keil.com/pack/doc/CMSIS/SVD/html/svd_Example_pg.html
+let fn_example = getCurrentDir() / Path("tests") / Path("example.svd")
+let example = parseSvdFile(fn_example)
+
+test "Register field enumerated values are parsed":
+  for p in example.peripherals:
+    for r in p.registers:
+      for f in r.fields:
+        if p.name == "TIMER0" and r.name == "INT" and f.name == "MODE":
+          check len(f.enumVals.enumVals) == 3
+          check f.enumVals.enumVals[0].name == "Match"
+          check f.enumVals.enumVals[0].value == 0'u32
+
