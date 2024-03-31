@@ -39,7 +39,7 @@ func parseSvdEnumVal(enumValNode: XmlNode): SvdEnumVal
 func parseSvdField(fieldNode: XmlNode): SvdRegField
 func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField)
 func parseAnyInt(s: string): int
-func parseAnyUInt(s: string): uint
+func parseBinaryInt(s: string): int
 func removeWhitespace(s: string): string
 
 proc parseSvdFile*(fn: Path): SvdDevice =
@@ -57,8 +57,8 @@ func parseSvdDevice(
   result.addressUnitBits = parseAnyInt(deviceNode.child("addressUnitBits").innerText)
   result.width = parseAnyInt(deviceNode.child("width").innerText)
   result.size = parseAnyInt(deviceNode.child("size").innerText)
-  result.resetValue = parseHexInt(deviceNode.child("resetValue").innerText)
-  result.resetMask = parseHexInt(deviceNode.child("resetMask").innerText)
+  result.resetValue = parseHexInt(deviceNode.child("resetValue").innerText).uint32
+  result.resetMask = parseHexInt(deviceNode.child("resetMask").innerText).uint32
   let cpuNode = deviceNode.child("cpu")
   result.cpu = parseSvdCpu(cpuNode)
   let peripheralsNode = deviceNode.child("peripherals")
@@ -105,7 +105,7 @@ func parseDerivedSvdPeripheral(
   result = basePeripheral # copy
   # The name and baseAddress fields MUST be differentiated from the base peripheral
   result.name = peripheralNode.child("name").innerText
-  result.baseAddress = parseAnyUInt(peripheralNode.child("baseAddress").innerText)
+  result.baseAddress = parseAnyInt(peripheralNode.child("baseAddress").innerText).uint32
   # The following fields are optionally differentiated from the base peripheral
   let descNode = peripheralNode.child("description")
   if not isNil(descNode):
@@ -120,7 +120,7 @@ func parseDerivedSvdPeripheral(
 
 func parseBaseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
   result.name = peripheralNode.child("name").innerText
-  result.baseAddress = parseAnyUInt(peripheralNode.child("baseAddress").innerText)
+  result.baseAddress = parseAnyInt(peripheralNode.child("baseAddress").innerText).uint32
   result.description = removeWhitespace(peripheralNode.child("description").innerText)
   parseSvdInterrupts(peripheralNode, result.interrupts)
   let addressBlockNode = peripheralNode.child("addressBlock")
@@ -157,7 +157,7 @@ func parseSvdRegister(registerNode: XmlNode): SvdRegister =
   result.name = registerNode.child("name").innerText
   result.description = removeWhitespace(registerNode.child("description").innerText)
   result.addressOffset = parseAnyInt(registerNode.child("addressOffset").innerText)
-  result.resetValue = parseAnyInt(registerNode.child("resetValue").innerText)
+  result.resetValue = parseAnyInt(registerNode.child("resetValue").innerText).uint32
   let accessNode = registerNode.child("access")
   parseSvdAccess(accessNode, result.access)
   let fieldsNode = registerNode.child("fields")
@@ -229,16 +229,21 @@ func parseSvdEnumVal(enumValNode: XmlNode): SvdEnumVal =
 func parseAnyInt(s: string): int =
   let lowercase = s.toLower()
   if lowercase.startsWith("0x"):
-    result = parseHexInt(lowercase)
+    result = parseHexInt(lowercase).int
+  elif lowercase.startsWith("0b"):
+    result = parseBinaryInt(lowercase[2..^1])
+  elif lowercase.startsWith("#"):
+    result = parseBinaryInt(lowercase[1..^1])
   else:
-    result = parseInt(lowercase)
+    result = parseInt(lowercase).int
 
-func parseAnyUInt(s: string): uint =
-  let lowercase = s.toLower()
-  if lowercase.startsWith("0x"):
-    result = cast[uint](parseHexInt(lowercase))
+func parseBinaryInt(s: string): int =
+  ## Argument, s, must have any prefix removed so that s[0] is '0' or '1'
+  if 'x' in s:
+    # side effect: stderr.write("Don't care bits in enum values are not yet supported.\n")
+    result = -1
   else:
-    result = parseUInt(s)
+    result = parseBinInt(s)
 
 func removeWhitespace(s: string): string =
   result = join(s.splitWhitespace(), " ")

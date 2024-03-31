@@ -35,7 +35,7 @@ type
     description*: string
     addressOffset*: int
     size*: int
-    resetValue*: int
+    resetValue*: uint32
     access*: SvdAccess
     fields*: seq[SvdRegField]
 
@@ -51,7 +51,7 @@ type
   SvdPeripheral* = object of SvdObject
     description*: string
     groupName*: string
-    baseAddress*: uint
+    baseAddress*: uint32
     interrupts*: seq[SvdInterrupt]
     addressBlock*: ref SvdAddressBlock
     registers*: seq[SvdRegister]
@@ -62,7 +62,7 @@ type
     addressUnitBits*: int
     width*: int
     size*: int
-    resetValue*: int
-    resetMask*: int
+    resetValue*: uint32
+    resetMask*: uint32
     cpu*: ref SvdCpu
     peripherals*: seq[SvdPeripheral]
