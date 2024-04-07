@@ -131,6 +131,15 @@ PERIPH.REG
       .FIELD1(g)
       .FIELD2(42)
       .write()
+
+# If the SVD file has enums declared for the registers' fields,
+# the enum symbols may be used to set the field value:
+PERIPH.REG.FIELD1(VAL1).write()
+
+# or you may use the enums' value to compare against the register's value:
+if PERIPH.REG.FIELD1 == VAL1:
+  # do something
+  discard
 ```
 
 ## The clever bits you don't see
@@ -224,11 +233,28 @@ template FIELD*(regVal: PERIPH_REGVal): PERIPH_REGVal =
 When the field has write access permissions, this becomes available:
 ```nim
 template FIELD*(regVal: PERIPH_REGVal, fieldVal: uint32): PERIPH_REGVal =
-  setField[PERIPH_REGVal](regVal, bitOffset, bitWidth, fieldVal)
+  setField[PERIPH_REGVal](regVal, fieldVal, bitOffset, bitWidth)
 ```
 
 You can look at [the source](https://github.com/dwhall/minisvd2nim/blob/main/src/minisvd2nimpkg/templates.nim#L71)
 if you want to see the implementations of `getField` and `setField`.
+
+### declare declareFieldEnum
+
+When the field has an enumeration declared, these become available:
+```nim
+declareEnum(`enumType`):
+  VAL1
+  VAL2
+  VAL3
+proc FIELD*(regVal: PERIPH_REGVal, fieldVal: `enumType`): PERIPH_REGVal {.inline.} =
+  setField[PERIPH_REGVal](regVal, fieldVal.uint32, bitOffset, bitWidth)
+```
+
+The `enumType` is not available to the programmer.  It is distinct and only
+used to constrain the values that can be passed to the `fieldName` proc.
+The enum symbols are available to the programmer and can be used as an
+argument to `FIELD()` and to use with values from PERIPH.REG.
 
 ## How to hack on minisvd2nim
 

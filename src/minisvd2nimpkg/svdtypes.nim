@@ -20,16 +20,17 @@ type
     isDefault*: bool
     value*: uint32
 
-  SvdEnumVals* = object of SvdObject
-    usage*: SvdAccess
-    enumVals*: seq[SvdEnumVal]
+  SvdFieldEnum* = object of SvdObject
+    usage*: SvdAccess = readWrite
+    headerEnumName*: string
+    values*: seq[SvdEnumVal]
 
   SvdRegField* = object of SvdObject
     description*: string
     bitOffset*: int
     bitWidth*: int
     access*: SvdAccess
-    enumVals*: SvdEnumVals
+    fieldEnum*: SvdFieldEnum
 
   SvdRegister* = object of SvdObject
     description*: string

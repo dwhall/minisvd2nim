@@ -27,6 +27,7 @@ test "the render procedure shall output a header comment":
   f.close()
   p.removeFile()
 
+
 let fn_stm32 = paths.getCurrentDir() / Path("tests") / Path("STM32F446_v1_7.svd")
 let dev_stm32 = parseSvdFile(fn_stm32)
 
@@ -35,6 +36,19 @@ test "the render procedure shall output peripheral registers":
   renderNimFromSvd(f, dev_stm32)
   f.setFilePos(0)
   let fileContents = f.readAll()
-  check "TSTR" in fileContents
   f.close()
   p.removeFile()
+  check "TSTR" in fileContents
+
+
+let fn_example = paths.getCurrentDir() / Path("tests") / Path("example.svd")
+let dev_example = parseSvdFile(fn_example)
+
+test "the render procedure shall output enum arrays if they exist":
+  let (f, p) = createTempFile("tmp", "example_render.nim", ".")
+  renderNimFromSvd(f, dev_example)
+  f.setFilePos(0)
+  let fileContents = f.readAll()
+  f.close()
+  p.removeFile()
+  check "Reset_Timer" in fileContents

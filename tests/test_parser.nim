@@ -52,7 +52,7 @@ test "Register field enumerated values are parsed":
     for r in p.registers:
       for f in r.fields:
         if p.name == "TIMER0" and r.name == "INT" and f.name == "MODE":
-          check len(f.enumVals.enumVals) == 3
-          check f.enumVals.enumVals[0].name == "Match"
-          check f.enumVals.enumVals[0].value == 0'u32
+          check len(f.fieldEnum.values) == 3
+          check f.fieldEnum.values[0].name == "Match"
+          check f.fieldEnum.values[0].value == 0'u32
 

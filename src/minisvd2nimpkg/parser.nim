@@ -34,8 +34,8 @@ func parseSvdRegisters(registersNode: XmlNode, registers: var seq[SvdRegister])
 func parseSvdRegister(registerNode: XmlNode): SvdRegister
 func parseSvdAccess(accessNode: XmlNode, access: var SvdAccess)
 func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField])
-func parseSvdEnumVals(enumValsNode: XmlNode, enumVals: var SvdEnumVals)
-func parseSvdEnumVal(enumValNode: XmlNode): SvdEnumVal
+func parseSvdFieldEnum(enumValsNode: XmlNode, fieldEnum: var SvdFieldEnum)
+func parseSvdEnumValue(enumValNode: XmlNode): SvdEnumVal
 func parseSvdField(fieldNode: XmlNode): SvdRegField
 func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField)
 func parseAnyInt(s: string): int
@@ -109,7 +109,7 @@ func parseDerivedSvdPeripheral(
   # The following fields are optionally differentiated from the base peripheral
   let descNode = peripheralNode.child("description")
   if not isNil(descNode):
-    result.description = removeWhitespace(peripheralNode.child("description").innerText)
+    result.description = removeWhitespace(descNode.innerText)
   let irqNode = peripheralNode.child("interrupt")
   if not isNil(irqNode):
     result.interrupts.setLen(0)
@@ -121,7 +121,9 @@ func parseDerivedSvdPeripheral(
 func parseBaseSvdPeripheral(peripheralNode: XmlNode): SvdPeripheral =
   result.name = peripheralNode.child("name").innerText
   result.baseAddress = parseAnyInt(peripheralNode.child("baseAddress").innerText).uint32
-  result.description = removeWhitespace(peripheralNode.child("description").innerText)
+  let descNode = peripheralNode.child("description")
+  if not isNil(descNode):
+    result.description = removeWhitespace(descNode.innerText)
   parseSvdInterrupts(peripheralNode, result.interrupts)
   let addressBlockNode = peripheralNode.child("addressBlock")
   result.addressBlock = parseSvdAddressBlock(addressBlockNode)
@@ -184,7 +186,7 @@ func parseSvdField(fieldNode: XmlNode): SvdRegField =
   let accessNode = fieldNode.child("access")
   parseSvdAccess(accessNode, result.access)
   let enumNode = fieldNode.child("enumeratedValues")
-  parseSvdEnumVals(enumNode, result.enumVals)
+  parseSvdFieldEnum(enumNode, result.fieldEnum)
 
 func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField) =
   let offsetNode = fieldNode.child("bitOffset")
@@ -206,23 +208,25 @@ func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField) =
     regField.bitOffset = lsb
     regField.bitWidth = msb - lsb + 1
 
-func parseSvdEnumVals(enumValsNode: XmlNode, enumVals: var SvdEnumVals) =
+func parseSvdFieldEnum(enumValsNode: XmlNode, fieldEnum: var SvdFieldEnum) =
   if isNil(enumValsNode):
     return
   let name = enumValsNode.child("name")
   if not isNil(name):
-    enumVals.name = name.innerText
+    fieldEnum.name = name.innerText
   let accessNode = enumValsNode.child("access")
-  parseSvdAccess(accessNode, enumVals.usage)
+  parseSvdAccess(accessNode, fieldEnum.usage)
   for enode in enumValsNode.findAll("enumeratedValue"):
-    enumVals.enumVals.add(parseSvdEnumVal(enode))
+    fieldEnum.values.add(parseSvdEnumValue(enode))
 
-func parseSvdEnumVal(enumValNode: XmlNode): SvdEnumVal =
+func parseSvdEnumValue(enumValNode: XmlNode): SvdEnumVal =
   result.name = enumValNode.child("name").innerText
-  result.description = removeWhitespace(enumValNode.child("description").innerText)
+  let descNode = enumValNode.child("description")
+  if not isNil(descNode):
+    result.description = removeWhitespace(descNode.innerText)
   let isDefault = enumValNode.child("isDefault")
   if not isNil(isDefault):
-    result.isDefault = isDefault.innerText.toLower == "true"
+    result.isDefault = isDefault.innerText.toLower() == "true"
   else:
     result.value = parseInt(enumValNode.child("value").innerText).uint32
 
@@ -240,7 +244,7 @@ func parseAnyInt(s: string): int =
 func parseBinaryInt(s: string): int =
   ## Argument, s, must have any prefix removed so that s[0] is '0' or '1'
   if 'x' in s:
-    # side effect: stderr.write("Don't care bits in enum values are not yet supported.\n")
+    # side effect: stderr.write("Don't care bits in enum value strings are not yet supported.\n")
     result = -1
   else:
     result = parseBinInt(s)

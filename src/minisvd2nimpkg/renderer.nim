@@ -85,6 +85,13 @@ proc renderField(outf, device, peripheral, register, field) =
   outf.write(
     &"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, fieldDesc = \"{field.description}\")\n"
   )
+  if field.fieldEnum.values.len > 0:
+    # output values as an array of (name, value) so templates.declareFieldEnum() can use it as a table
+    outf.write(
+      &"declareFieldEnum(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}):\n"
+    )
+    for enumVal in field.fieldEnum.values.items():
+      outf.write(&"  {enumVal.name} = {enumVal.value}\n")
 
 func readAccess(access): bool =
   access == readWrite or access == readOnly
