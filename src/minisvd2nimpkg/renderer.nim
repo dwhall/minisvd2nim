@@ -46,7 +46,7 @@ proc renderHeader(outf, device) =
 # Tool args:            {commandLineParams()}
 # Input file version:   {device.version}
 
-import minisvd2nimpkg/templates
+import minisvd2nimpkg/metagenerator
 
 """
   )
@@ -86,7 +86,6 @@ proc renderField(outf, device, peripheral, register, field) =
     &"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, fieldDesc = \"{field.description}\")\n"
   )
   if field.fieldEnum.values.len > 0:
-    # output values as an array of (name, value) so templates.declareFieldEnum() can use it as a table
     outf.write(
       &"declareFieldEnum(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}):\n"
     )

@@ -2,14 +2,14 @@
 
 [minisvd2nim](github.com/dwhall/minisvd2nim) is a command line tool
 that processes one SVD file as input and renders declarative nim
-source to stdout.  The declarations invoke templates which produce
-the final nim code.  This way, a programmer can change the templates, and
-not the minisvd2nim binary, to fix or improve the final code.
+source to stdout.  The declarations invoke templates and macros which
+generate the final nim code.  This way, a programmer can change the meta
+code, and not the minisvd2nim binary, to fix or improve the final code.
 
                                            ┌──────────────────────┐
                                            │                      │
-                                           │    minisvd2nimpkg/   │
-                                           │    templates.nim     │
+                                           │   minisvd2nimpkg/    │
+                                           │  metagenerator.nim   │
                                            │                      │
                                            └─────────▲────────────┘
                                                      │
@@ -41,15 +41,15 @@ and manufacturers of ARM based microcontrollers.
 1) I wanted to alter the syntax used to read from and write to registers and fields.
 2) The size reductions I discovered would require a re-write of svd2nim
    that was more work than starting from scratch.
-3) I wanted to use templates to emit code so that the minisvd2nim executable
-   would not need to be re-compiled to alter the final output.
+3) I wanted to use metaprogramming to emit code so that the minisvd2nim
+   executable would not need to be re-compiled to alter the final output.
 
 ## Okay, so tell us about minisvd2min
 
 The first reason it is called "mini" is because the codebase is small.
 The parser is under 500 lines of cleanish code.
 The renderer is under 500 lines of cleanish code.
-The templates are under 500 lines of some mind-bending shit.
+The templates and macros are under 500 lines of some mind-bending shit.
 
 The second reason it is called "mini" is because the resulting code,
 when compiled to a binary, is as small as I can make it.
@@ -145,7 +145,7 @@ if PERIPH.REG.FIELD1 == VAL1:
 ## The clever bits you don't see
 
 The tricks I used to create small code is done by the output
-of the templates.  So you will never see that code.
+of the templates and macros.  So you will never see that code.
 However, I've approximated it here to help fellow
 programmers understand what is going on under the hood.
 
@@ -154,11 +154,11 @@ that we've been calling `device.nim` has a bunch of lines
 that begin with `declareDevice`, `declarePeripheral`,
 `declareRegister`, `declareField`, etc.
 
-All of those `declare` calls are processed by Nim templates from the
-`minisvd2nimpkg/templates` module.  Below is what each of those
-templates would output, with some actual and imagined values for example.
+All of those `declare` calls are processed by Nim templates and macros
+from the `minisvd2nimpkg/metagenerator` module.  Below is what each of those
+would output, with some actual and imagined values for example.
 (These code examples may become out of date if I update
-the templates module and forget to update this doc)
+the `metagenerator` module and forget to update this doc)
 
 ### declareDevice
 
@@ -236,7 +236,7 @@ template FIELD*(regVal: PERIPH_REGVal, fieldVal: uint32): PERIPH_REGVal =
   setField[PERIPH_REGVal](regVal, fieldVal, bitOffset, bitWidth)
 ```
 
-You can look at [the source](https://github.com/dwhall/minisvd2nim/blob/main/src/minisvd2nimpkg/templates.nim#L71)
+You can look at [the source](https://github.com/dwhall/minisvd2nim/blob/main/src/minisvd2nimpkg/metagenerator.nim#L71)
 if you want to see the implementations of `getField` and `setField`.
 
 ### declare declareFieldEnum
@@ -259,16 +259,16 @@ argument to `FIELD()` and to use with values from PERIPH.REG.
 ## How to hack on minisvd2nim
 
 There are two parts to `minisvd2nim` parsing and rendering the SVD (.xml) file;
-and using templates to create usable code from the device file.
+and using templates and macros to create usable code from the device file.
 Once we get ALL possible XML nodes parsed and rendered, then what remains is
-creating templates for our applications' needs.
+meta programming for our applications' needs.
 
-To experiment with the templates, you need to do these three things:
-1) copy `templates.nim` to your project and put it in the same place as
-   your `device.nim`
-2) edit your `device.nim` to `import templates` so Nim grabs the local copy
-   instead of the one from the library.
-3) edit the local `templates.nim` to generate the output you want.
+To experiment with the metaprogramming, you need to do these three things:
+1) copy `metagenerator.nim` to your project and put it in the same place as
+   your `device.nim`.
+2) edit your `device.nim` to `import metagenerator.nim`.  Nim grabs the local
+   copy instead of the one from the library.
+3) edit the local `metagenerator.nim` to generate the output you want.
 
 ## The author would like to thank
 
