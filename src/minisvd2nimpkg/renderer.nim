@@ -25,8 +25,11 @@ proc renderPeripheral(outf, device, peripheral)
 proc renderInterrupt(outf, device, peripheral, interrupt)
 proc renderRegister(outf, device, peripheral, register)
 proc renderField(outf, device, peripheral, register, field)
-func readAccess(access): bool
-func writeAccess(access): bool
+
+func readAccess(access): bool =
+  access == readWrite or access == readOnly
+func writeAccess(access): bool =
+  access == readWrite or access == writeOnly
 
 proc renderNimFromSvd*(outf, device) =
   renderHeader(outf, device)
@@ -75,9 +78,12 @@ proc renderInterrupt(outf, device, peripheral, interrupt) =
   )
 
 proc renderRegister(outf, device, peripheral, register) =
-  outf.write(
-    &"declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\")\n"
-  )
+  let declaration =
+    if isNil register.baseRegister:
+      &"declareDistinctRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\")\n"
+    else:
+      &"declareDerivedRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\", baseRegisterName={register.baseRegister.name})\n"
+  outf.write(declaration)
   for f in register.fields:
     renderField(outf, device, peripheral, register, f)
 
@@ -91,8 +97,3 @@ proc renderField(outf, device, peripheral, register, field) =
     )
     for enumVal in field.fieldEnum.values.items():
       outf.write(&"  {enumVal.name} = {enumVal.value}\n")
-
-func readAccess(access): bool =
-  access == readWrite or access == readOnly
-func writeAccess(access): bool =
-  access == readWrite or access == writeOnly

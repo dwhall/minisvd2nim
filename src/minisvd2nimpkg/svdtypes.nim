@@ -32,11 +32,12 @@ type
     access*: SvdAccess
     fieldEnum*: SvdFieldEnum
 
-  SvdRegister* = object of SvdObject
+  SvdRegister* = ref object of SvdObject
     description*: string
     addressOffset*: int
     size*: int
     resetValue*: uint32
+    baseRegister*: SvdRegister # only used by derived registers
     access*: SvdAccess
     fields*: seq[SvdRegField]
 
@@ -67,3 +68,4 @@ type
     resetMask*: uint32
     cpu*: ref SvdCpu
     peripherals*: seq[SvdPeripheral]
+    access*: SvdAccess # default access rights for all registers

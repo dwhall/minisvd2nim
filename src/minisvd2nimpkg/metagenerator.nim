@@ -51,15 +51,20 @@ template declareInterrupt*(
 ): untyped =
   const `irq interruptName`* {.inject.} = interruptValue # `interruptDesc`
 
-template declareRegister*(
+template declareRegister(
     peripheralName: untyped,
     registerName: untyped,
     addressOffset: static uint32,
     readAccess: static bool,
     writeAccess: static bool,
     registerDesc: static string,
+    baseRegisterName: untyped
 ): untyped =
-  type `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
+  # Registers that have a baseRegister use its Val class so all siblings are type compatible.
+  # This allows, for example, one of the sibling register types to be selected from a case/of of all sibling register types.
+  # Registers that do not declare a baseRegisterName receive the default, RegisterVal, which
+  # makes that register type distinct.
+  type `peripheralName _ registerName Val`* {.inject.} = distinct `baseRegisterName`
   type `peripheralName _ registerName Ptr` {.inject.} =
     ptr `peripheralName _ registerName Val`
 
@@ -83,6 +88,27 @@ template declareRegister*(
 
     proc write*(regVal: `peripheralName _ registerName Val`) {.inline.} =
       volatileStore(`peripheralName _ registerName`, regVal)
+
+template declareDerivedRegister*(
+    peripheralName: untyped,
+    registerName: untyped,
+    addressOffset: static uint32,
+    readAccess: static bool,
+    writeAccess: static bool,
+    registerDesc: static string,
+    baseRegisterName: untyped
+): untyped =
+  declareRegister(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc, `peripheralName _ baseRegisterName Val`)
+
+template declareDistinctRegister*(
+    peripheralName: untyped,
+    registerName: untyped,
+    addressOffset: static uint32,
+    readAccess: static bool,
+    writeAccess: static bool,
+    registerDesc: static string
+): untyped =
+  declareRegister(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc, RegisterVal)
 
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
   ## Extracts a bitfield from regVal, zero extends it to 32 bits.
