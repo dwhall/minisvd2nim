@@ -53,7 +53,7 @@ func parseSvdDerivedRegister(
 ): SvdRegister
 func parseSvdAccess(accessNode: XmlNode, access: var SvdAccess)
 func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField])
-func parseSvdFieldEnum(enumValsNode: XmlNode, fieldEnum: var SvdFieldEnum)
+func parseSvdFieldEnum(enumValsNode: XmlNode, enumeratedValues: var SvdFieldEnum)
 func parseSvdEnumValue(enumValNode: XmlNode): SvdEnumVal
 func parseSvdField(fieldNode: XmlNode): SvdRegField
 func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField)
@@ -146,8 +146,8 @@ func parseSvdDerivedPeripheral(
     result.description = removeWhitespace(descNode.innerText)
   let irqNode = peripheralNode.child("interrupt")
   if not isNil(irqNode):
-    result.interrupts.setLen(0)
-    parseSvdInterrupts(peripheralNode, result.interrupts)
+    result.interrupt.setLen(0)
+    parseSvdInterrupts(peripheralNode, result.interrupt)
   let addressBlockNode = peripheralNode.child("addressBlock")
   result.addressBlock = parseSvdAddressBlock(addressBlockNode)
   # Do not differentiate registers (that's the whole reason for SVD's "derivedFrom" peripherals)
@@ -160,7 +160,7 @@ func parseSvdDistinctPeripheral(
   let descNode = peripheralNode.child("description")
   if not isNil(descNode):
     result.description = removeWhitespace(descNode.innerText)
-  parseSvdInterrupts(peripheralNode, result.interrupts)
+  parseSvdInterrupts(peripheralNode, result.interrupt)
   let addressBlockNode = peripheralNode.child("addressBlock")
   result.addressBlock = parseSvdAddressBlock(addressBlockNode)
   let registersNode = peripheralNode.child("registers")
@@ -258,7 +258,7 @@ func parseSvdField(fieldNode: XmlNode): SvdRegField =
   let accessNode = fieldNode.child("access")
   parseSvdAccess(accessNode, result.access)
   let enumNode = fieldNode.child("enumeratedValues")
-  parseSvdFieldEnum(enumNode, result.fieldEnum)
+  parseSvdFieldEnum(enumNode, result.enumeratedValues)
 
 func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField) =
   let offsetNode = fieldNode.child("bitOffset")
@@ -281,16 +281,16 @@ func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField) =
     regField.bitOffset = lsb
     regField.bitWidth = msb - lsb + 1
 
-func parseSvdFieldEnum(enumValsNode: XmlNode, fieldEnum: var SvdFieldEnum) =
+func parseSvdFieldEnum(enumValsNode: XmlNode, enumeratedValues: var SvdFieldEnum) =
   if isNil(enumValsNode):
     return
   let name = enumValsNode.child("name")
   if not isNil(name):
-    fieldEnum.name = name.innerText
+    enumeratedValues.name = name.innerText
   let accessNode = enumValsNode.child("access")
-  parseSvdAccess(accessNode, fieldEnum.usage)
+  parseSvdAccess(accessNode, enumeratedValues.access)
   for enode in enumValsNode.findAll("enumeratedValue"):
-    fieldEnum.values.add(parseSvdEnumValue(enode))
+    enumeratedValues.values.add(parseSvdEnumValue(enode))
 
 func parseSvdEnumValue(enumValNode: XmlNode): SvdEnumVal =
   result.name = enumValNode.child("name").innerText

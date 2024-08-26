@@ -1,3 +1,10 @@
+## Copyright 2024 Dean Hall, all rights reserved.  See LICENSE.txt for details.
+##
+## Types used to hold data parsed from an SVD file.
+## Each SvdObject's field names MUST match the SVD spec
+## in order for the auto-parser to work.
+##
+
 type
   SvdObject* = object of RootObj
     name*: string
@@ -17,11 +24,12 @@ type
 
   SvdEnumVal* = object of SvdObject
     description*: string
+    # TODO: choice of: value, isDefault
     isDefault*: bool
     value*: uint32
 
   SvdFieldEnum* = object of SvdObject
-    usage*: SvdAccess = readWrite
+    access*: SvdAccess = readWrite
     headerEnumName*: string
     values*: seq[SvdEnumVal]
 
@@ -30,7 +38,7 @@ type
     bitOffset*: int
     bitWidth*: int
     access*: SvdAccess
-    fieldEnum*: SvdFieldEnum
+    enumeratedValues*: SvdFieldEnum
 
   SvdRegister* = ref object of SvdObject
     description*: string
@@ -54,7 +62,7 @@ type
     description*: string
     groupName*: string
     baseAddress*: uint32
-    interrupts*: seq[SvdInterrupt]
+    interrupt*: seq[SvdInterrupt]
     addressBlock*: ref SvdAddressBlock
     registers*: seq[SvdRegister]
 

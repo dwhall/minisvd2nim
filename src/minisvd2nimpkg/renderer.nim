@@ -1,3 +1,5 @@
+## Copyright 2024 Dean Hall, all rights reserved.  See LICENSE.txt for details.
+##
 ## Renders Nim source to represent a device
 ## according to the given SVD data
 ##
@@ -67,7 +69,7 @@ proc renderPeripheral(outf, device, peripheral) =
   outf.write(
     &"declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u32, peripheralDesc = \"{peripheral.description}\")\n"
   )
-  for irq in peripheral.interrupts:
+  for irq in peripheral.interrupt:
     renderInterrupt(outf, device, peripheral, irq)
   for r in peripheral.registers:
     renderRegister(outf, device, peripheral, r)
@@ -91,9 +93,9 @@ proc renderField(outf, device, peripheral, register, field) =
   outf.write(
     &"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, fieldDesc = \"{field.description}\")\n"
   )
-  if field.fieldEnum.values.len > 0:
+  if field.enumeratedValues.values.len > 0:
     outf.write(
       &"declareFieldEnum(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}):\n"
     )
-    for enumVal in field.fieldEnum.values.items():
+    for enumVal in field.enumeratedValues.values.items():
       outf.write(&"  {enumVal.name} = {enumVal.value}\n")

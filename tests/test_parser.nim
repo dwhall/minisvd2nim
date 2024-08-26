@@ -25,7 +25,7 @@ test "the .svd parse procedure SHOULD return the device name when it is present 
   check device.name == "STM32F446"
 
 test "the .svd parse procedure SHOULD parse an interrupt":
-  let irqs = device.peripherals[0].interrupts
+  let irqs = device.peripherals[0].interrupt
   check irqs.len > 0
   check irqs[0].name == "DCMI"
   check irqs[0].value == 78
@@ -40,7 +40,7 @@ test "derived peripherals SHOULD overwrite their parent's fields with their own"
   # declareInterrupt(peripheralName = DMA1, interruptName = DMA2_Stream0, interruptValue = 56, interruptDesc = "DMA2 Stream0 global interrupt")
   for p in device.peripherals:
     if p.name == "DMA1":
-      for irq in p.interrupts:
+      for irq in p.interrupt:
         check irq.name.startsWith("DMA1")
       break
 
@@ -55,9 +55,9 @@ test "the .svd parse procedure SHOULD parse register field enumerated values":
     for r in p.registers:
       for f in r.fields:
         if p.name == "TIMER0" and r.name == "INT" and f.name == "MODE":
-          check len(f.fieldEnum.values) == 3
-          check f.fieldEnum.values[0].name == "Match"
-          check f.fieldEnum.values[0].value == 0'u32
+          check len(f.enumeratedValues.values) == 3
+          check f.enumeratedValues.values[0].name == "Match"
+          check f.enumeratedValues.values[0].value == 0'u32
 
 test "the .svd parse procedure SHOULD be able to parse registers having the derivedFrom attribute":
   for p in example.peripherals:
