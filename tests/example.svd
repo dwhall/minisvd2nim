@@ -772,20 +772,6 @@
         <description>Timer 1 interrupt</description>
         <value>4</value>
       </interrupt>
-      <register>
-        <name>TimerCtrl0</name>
-        <description>Timer Control Register</description>
-        <addressOffset>0x0</addressOffset>
-        <access>read-write</access>
-        <resetValue>0x00008001</resetValue>
-        <resetMask>0x0000ffff</resetMask>
-        <size>32</size>
-      </register>
-      <register derivedFrom="TimerCtrl0">
-        <name>TimerCtrl1</name>
-        <description>Derived Timer</description>
-        <addressOffset>0x4</addressOffset>
-      </register>
     </peripheral>
 
     <!-- Timer 2 -->
@@ -797,6 +783,26 @@
         <description>Timer 2 interrupt</description>
         <value>6</value>
       </interrupt>
+    </peripheral>
+
+    <!-- DWH: ficticious peripheral to test derived register -->
+    <peripheral>
+      <name>FOO</name>
+      <baseAddress>0x400101C0</baseAddress>
+      <register>
+        <name>BAR0</name>
+        <description>Dummy Register</description>
+        <addressOffset>0x0</addressOffset>
+        <access>read-write</access>
+        <resetValue>0x00008001</resetValue>
+        <resetMask>0x0000ffff</resetMask>
+        <size>32</size>
+      </register>
+      <register derivedFrom="BAR0">
+        <name>BAR1</name>
+        <description>Derived Dummy</description>
+        <addressOffset>0x4</addressOffset>
+      </register>
     </peripheral>
   </peripherals>
 </device>

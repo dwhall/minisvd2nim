@@ -1,6 +1,6 @@
 import std/paths
 import std/strutils
-import unittest
+import std/unittest
 
 import minisvd2nimpkg/parser
 import minisvd2nimpkg/svdtypes
@@ -48,10 +48,10 @@ test "derived peripherals SHOULD overwrite their parent's fields with their own"
 ## and is manually modified for specific tests using examples from:
 ## https://open-cmsis-pack.github.io/svd-spec/main/elem_registers.html
 let fn_example = getCurrentDir() / Path("tests") / Path("example.svd")
-let example = parseSvdFile(fn_example)
+let ex = parseSvdFile(fn_example)
 
 test "the .svd parse procedure SHOULD parse register field enumerated values":
-  for p in example.peripherals:
+  for p in ex.peripherals:
     for r in p.registers:
       for f in r.fields:
         if p.name == "TIMER0" and r.name == "INT" and f.name == "MODE":
@@ -60,9 +60,27 @@ test "the .svd parse procedure SHOULD parse register field enumerated values":
           check f.enumeratedValues.values[0].value == 0'u32
 
 test "the .svd parse procedure SHOULD be able to parse registers having the derivedFrom attribute":
-  for p in example.peripherals:
+  for p in ex.peripherals:
     for r in p.registers:
       if p.name == "TIMER1" and r.name == "TimerCtrl1":
         check r.derivedFrom == "TimerCtrl0"
         check r.description == "Derived Timer"
         check r.addressOffset == 4
+
+# If you got an error running the unit tests it is because of this.
+# Run the tests again and example.nim should exist because of the block
+# in test_metagenerator.
+import example
+
+test "derived peripherals SHOULD have registers identical to the base peripheral":
+  check compiles TIMER1.COUNT.uint32
+  check compiles TIMER1.MATCH.uint32
+  check compiles TIMER2.COUNT.uint32
+  check compiles TIMER2.MATCH.uint32
+
+test "derived registers SHOULD have compatible register value types":
+  # check typeOf(TIMER1.COUNT) is typeOf(TIMER2.COUNT)
+  discard # TODO: Find a isTypeEquivalent function
+
+test "derived registers SHOULD have compatible register fields":
+  discard # TODO

@@ -51,20 +51,18 @@ template declareInterrupt*(
 ): untyped =
   const `irq interruptName`* {.inject.} = interruptValue # `interruptDesc`
 
-template declareRegister(
+template declareRegisterBody(
     peripheralName: untyped,
     registerName: untyped,
     addressOffset: static uint32,
     readAccess: static bool,
     writeAccess: static bool,
-    registerDesc: static string,
-    derivedFrom: untyped
+    registerDesc: static string
 ): untyped =
   # Registers that have a non-empty derivedFrom field use its Val class so the derived registers are type compatible.
   # This allows, for example, one of the sibling register types to be selected from a case/of of all sibling register types.
   # Registers that do not declare a derivedFrom receive the default, RegisterVal, which
   # makes that register type distinct.
-  type `peripheralName _ registerName Val`* {.inject.} = distinct `derivedFrom`
   type `peripheralName _ registerName Ptr` {.inject.} =
     ptr `peripheralName _ registerName Val`
 
@@ -89,7 +87,7 @@ template declareRegister(
     proc write*(regVal: `peripheralName _ registerName Val`) {.inline.} =
       volatileStore(`peripheralName _ registerName`, regVal)
 
-template declareDerivedRegister*(
+template declareRegister*(
     peripheralName: untyped,
     registerName: untyped,
     addressOffset: static uint32,
@@ -98,9 +96,10 @@ template declareDerivedRegister*(
     registerDesc: static string,
     derivedFrom: untyped
 ): untyped =
-  declareRegister(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc, `peripheralName _ drivedFrom Val`)
+  type `peripheralName _ registerName Val`* {.inject.} = object of `peripheralName _ derivedFrom Val`
+  declareRegisterBody(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc)
 
-template declareDistinctRegister*(
+template declareRegister*(
     peripheralName: untyped,
     registerName: untyped,
     addressOffset: static uint32,
@@ -108,7 +107,8 @@ template declareDistinctRegister*(
     writeAccess: static bool,
     registerDesc: static string
 ): untyped =
-  declareRegister(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc, RegisterVal)
+  type `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
+  declareRegisterBody(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc)
 
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
   ## Extracts a bitfield from regVal, zero extends it to 32 bits.

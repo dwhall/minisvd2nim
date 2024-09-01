@@ -18,8 +18,9 @@ block:
     outf.close()
   renderNimFromSvd(outf, svd)
 
-# compiler error if example.nim doesn't exist before the block above
-#import example #.nim
+# If you got an error running the unit tests it is because of this.
+# Run the tests again and example.nim should exist because of the block above.
+#import example
 
 test "derived registers SHOULD have compatible register values and fields":
   discard # TODO
