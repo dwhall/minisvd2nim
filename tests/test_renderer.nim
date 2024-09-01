@@ -14,7 +14,7 @@ test "there shall be a procedure to render nim source":
   check compiles(renderNimFromSvd(stdout, dev_test))
 
 test "DEBUG: generates a file to examine by hand":
-  var f = open("tests" / "generated_by_test_render.nim", fmWrite)
+  var f = open("tests" / "generated_by_test_renderer.nim", fmWrite)
   renderNimFromSvd(f, dev_test)
 
 test "the render procedure shall output a header comment":
@@ -27,7 +27,6 @@ test "the render procedure shall output a header comment":
   f.close()
   p.removeFile()
 
-
 let fn_stm32 = paths.getCurrentDir() / Path("tests") / Path("STM32F446_v1_7.svd")
 let dev_stm32 = parseSvdFile(fn_stm32)
 
@@ -39,7 +38,6 @@ test "the render procedure shall output peripheral registers":
   f.close()
   p.removeFile()
   check "TSTR" in fileContents
-
 
 let fn_example = paths.getCurrentDir() / Path("tests") / Path("example.svd")
 let dev_example = parseSvdFile(fn_example)

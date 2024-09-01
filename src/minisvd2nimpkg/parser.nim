@@ -6,7 +6,7 @@
 ##    https://open-cmsis-pack.github.io/svd-spec/main/svd_Format_pg.html
 ##
 
-import std/[paths, strtabs, strutils, tables, xmlparser, xmltree]
+import std/[paths, strformat, strtabs, strutils, tables, xmlparser, xmltree]
 
 import svdtypes
 
@@ -49,7 +49,7 @@ func parseSvdRegister(
 ): SvdRegister
 func parseSvdDistinctRegister(registerNode: XmlNode): SvdRegister
 func parseSvdDerivedRegister(
-  registerNode: XmlNode, baseRegister: SvdRegister
+  registerNode: XmlNode, derivedFrom: SvdRegister
 ): SvdRegister
 func parseSvdAccess(accessNode: XmlNode, access: var SvdAccess)
 func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField])
@@ -185,6 +185,25 @@ func parseSvdAddressBlock(addressBlockNode: XmlNode): ref SvdAddressBlock =
   result.size = parseAnyInt(addressBlockNode.child("size").innerText)
   result.usage = addressBlockNode.child("usage").innerText
 
+iterator parseSvdRegisterGroup(registerNode: XmlNode, reg: SvdRegister): SvdRegister =
+  assert len(reg.name) > len("[%s]")
+  let dim = registerNode.child("dim")
+  let dimIncrement = registerNode.child("dimIncrement")
+  if not isNil(dim) and not isNil(dimIncrement):
+    let dimIndex = registerNode.child("dimIndex")
+    let regRootName = reg.name[0 ..< ^len("[%s]")]
+    let dimVal = dim.innerText.parseAnyInt
+    let dimIncrementVal = dimIncrement.innerText.parseAnyInt
+    var nameIndex: int = if isNil dimIndex: 0 else: dimIndex.innerText.parseAnyInt
+    var offset = 0
+    for i in 0 ..< dimVal:
+      var r = reg # copy
+      r.name = fmt"{regRootName}{nameIndex}"
+      inc nameIndex
+      r.addressOffset = reg.addressOffset + offset
+      offset += dimIncrementVal
+      yield r
+
 func parseSvdRegisters(
     registersNode: XmlNode,
     registers: var seq[SvdRegister],
@@ -193,25 +212,30 @@ func parseSvdRegisters(
   if isNil(registersNode):
     return
   for rnode in registersNode.findAll("register"):
-    registers.add(parseSvdRegister(rnode, registerCache))
+    let reg = parseSvdRegister(rnode, registerCache)
+    if reg.name.endsWith("[%s]"):
+      for r in parseSvdRegisterGroup(rnode, reg):
+        registers.add(r)
+    else:
+      registers.add(reg)
 
 func parseSvdRegister(
     registerNode: XmlNode, registerCache: var RegisterCache
 ): SvdRegister =
   let pattrs = registerNode.attrs()
   if not isNil(pattrs) and "derivedFrom" in pattrs:
-    let baseRegister = registerCache[pattrs["derivedFrom"]]
-    result = parseSvdDerivedRegister(registerNode, baseRegister)
+    let derivedFrom = registerCache[pattrs["derivedFrom"]]
+    result = parseSvdDerivedRegister(registerNode, derivedFrom)
   else:
     result = parseSvdDistinctRegister(registerNode)
     registerCache[result.name] = result
       # TODO: determine if derivedFrom can apply to an already-derived peripheral.  If so, unindent so derived registers go into the cache.
 
 func parseSvdDerivedRegister(
-    registerNode: XmlNode, baseRegister: SvdRegister
+    registerNode: XmlNode, derivedFrom: SvdRegister
 ): SvdRegister =
-  result = baseRegister # copy
-  result.baseRegister = baseRegister
+  result = derivedFrom # copy
+  result.derivedFrom = derivedFrom.name
   # The name, baseAddress and fields MUST be differentiated from the base register
   result.name = registerNode.child("name").innerText
   result.addressOffset = parseAnyInt(registerNode.child("addressOffset").innerText)
@@ -220,7 +244,7 @@ func parseSvdDerivedRegister(
   # TODO: The following fields are optionally differentiated from the base register
 
 func parseSvdDistinctRegister(registerNode: XmlNode): SvdRegister =
-  result = new SvdRegister
+  result = SvdRegister()
   result.name = registerNode.child("name").innerText
   result.addressOffset = parseAnyInt(registerNode.child("addressOffset").innerText)
   let descriptionNode = registerNode.child("description")
@@ -233,6 +257,7 @@ func parseSvdDistinctRegister(registerNode: XmlNode): SvdRegister =
   parseSvdAccess(accessNode, result.access)
   let fieldsNode = registerNode.child("fields")
   parseSvdFields(fieldsNode, result.fields)
+  let dimNode = registerNode.child("dim")
 
 func parseSvdAccess(accessNode: XmlNode, access: var SvdAccess) =
   # TODO: change "read-only" to parse-context's device.access

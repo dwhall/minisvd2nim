@@ -63,6 +63,6 @@ test "the .svd parse procedure SHOULD be able to parse registers having the deri
   for p in example.peripherals:
     for r in p.registers:
       if p.name == "TIMER1" and r.name == "TimerCtrl1":
-        check r.baseRegister.name == "TimerCtrl0"
+        check r.derivedFrom == "TimerCtrl0"
         check r.description == "Derived Timer"
         check r.addressOffset == 4

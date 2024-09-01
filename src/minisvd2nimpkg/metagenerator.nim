@@ -58,13 +58,13 @@ template declareRegister(
     readAccess: static bool,
     writeAccess: static bool,
     registerDesc: static string,
-    baseRegisterName: untyped
+    derivedFrom: untyped
 ): untyped =
-  # Registers that have a baseRegister use its Val class so all siblings are type compatible.
+  # Registers that have a non-empty derivedFrom field use its Val class so the derived registers are type compatible.
   # This allows, for example, one of the sibling register types to be selected from a case/of of all sibling register types.
-  # Registers that do not declare a baseRegisterName receive the default, RegisterVal, which
+  # Registers that do not declare a derivedFrom receive the default, RegisterVal, which
   # makes that register type distinct.
-  type `peripheralName _ registerName Val`* {.inject.} = distinct `baseRegisterName`
+  type `peripheralName _ registerName Val`* {.inject.} = distinct `derivedFrom`
   type `peripheralName _ registerName Ptr` {.inject.} =
     ptr `peripheralName _ registerName Val`
 
@@ -96,9 +96,9 @@ template declareDerivedRegister*(
     readAccess: static bool,
     writeAccess: static bool,
     registerDesc: static string,
-    baseRegisterName: untyped
+    derivedFrom: untyped
 ): untyped =
-  declareRegister(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc, `peripheralName _ baseRegisterName Val`)
+  declareRegister(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc, `peripheralName _ drivedFrom Val`)
 
 template declareDistinctRegister*(
     peripheralName: untyped,

@@ -40,14 +40,17 @@ type
     access*: SvdAccess
     enumeratedValues*: SvdFieldEnum
 
-  SvdRegister* = ref object of SvdObject
+  SvdRegister* = object of SvdObject
     description*: string
     addressOffset*: int
     size*: int
     resetValue*: uint32
-    baseRegister*: SvdRegister # only used by derived registers
+    derivedFrom*: string
     access*: SvdAccess
     fields*: seq[SvdRegField]
+    dim: int
+    dimIncrement: int
+    dimIndex: int
 
   SvdInterrupt* = object of SvdObject
     description*: string

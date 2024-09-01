@@ -81,10 +81,10 @@ proc renderInterrupt(outf, device, peripheral, interrupt) =
 
 proc renderRegister(outf, device, peripheral, register) =
   let declaration =
-    if isNil register.baseRegister:
-      &"declareDistinctRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\")\n"
+    if len(register.derivedFrom) > 0:
+      &"declareDerivedRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\", derivedFrom = {register.derivedFrom})\n"
     else:
-      &"declareDerivedRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\", baseRegisterName={register.baseRegister.name})\n"
+      &"declareDistinctRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\")\n"
   outf.write(declaration)
   for f in register.fields:
     renderField(outf, device, peripheral, register, f)
