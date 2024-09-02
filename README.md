@@ -186,31 +186,36 @@ const irqSPI1* = 35
 ### declareRegister
 
 ```nim
-type PERIPH_REGVal* = distinct RegisterVal
+type PERIPH_REGVal* = distinct RegisterVal  # for distinct registers
+type PERIPH_REGVal* = object of PERIPH_BASEREGVal  # for derived registers
 type PERIPH_REGPtr = ptr PERIPH_REGVal
 
 const PERIPH_REG = cast[PERIPH_REGPtr](PERIPH.uint32 + 16)
 # where 16 is the register's offset from the peripheral's base address
 ```
 Declaring these types and using the `distinct` keyword ensures
-that we use PERIPH and REG names meant to work together.
+a given PERIPH_REG cannot be written with values meant for another register.
 Wrong names will result in a compile time error.
 
-Notice that `PERIPH_REG` (with an underscore) is private;
-you won't use it directly.  It is used as an argument to
-`volatileLoad` and `volatileStore` by other templates below.
+Notice that `PERIPH_REGVal`, `PERIPH_REGPtr` and `PERIPH_REG` are types private
+to the `device.nim` file and are only meant for internal use.
 
-When the register has read access permissions, this becomes available:
+**Only the public constants `PERIPH` and `REG` are meant for end use
+in the exact form: `PERIPH.REG`.**
+
+When the register has read access, this becomes available:
 ```nim
 template REG*(base: static PERIPHBase): PERIPH_REGVal =
   volatileLoad(PERIPH_REG)
 ```
 Notice that the `declareRegister` template is emitting this template
 and `volatileLoad` itself is a template.  I told you there was some
-mind-bending shit.  But a side-effect of all this is that any errors
-here will have messages that are difficult to understand.
+mind-bending shit.  An unfortunate side-effect of all this is that
+any errors here will have messages that are difficult to understand.
+In other words, only modify `metagenerator.nim` if you know what you are doing.
+You have been warned.
 
-When the register has write access permissions, these become available:
+When the register has write access, these become available:
 ```nim
 template `REG=`*(base: static PERIPHBase, val: PERIPH_REGVal) =
   volatileStore(PERIPH_REG, val)
@@ -224,19 +229,19 @@ template write*(regVal: PERIPH_REGVal) =
 
 ### declareField
 
-When the field has read access permissions, this becomes available:
+When the field has read access, this becomes available:
 ```nim
 template FIELD*(regVal: PERIPH_REGVal): PERIPH_REGVal =
   getField[PERIPH_REGVal](regVal, bitOffset, bitWidth)
 ```
 
-When the field has write access permissions, this becomes available:
+When the field has write access, this becomes available:
 ```nim
 template FIELD*(regVal: PERIPH_REGVal, fieldVal: uint32): PERIPH_REGVal =
   setField[PERIPH_REGVal](regVal, fieldVal, bitOffset, bitWidth)
 ```
 
-You can look at [the source](https://github.com/dwhall/minisvd2nim/blob/main/src/minisvd2nimpkg/metagenerator.nim#L71)
+You can look at [the source](https://github.com/dwhall/minisvd2nim/blob/main/src/minisvd2nimpkg/metagenerator.nim#L123)
 if you want to see the implementations of `getField` and `setField`.
 
 ### declare declareFieldEnum
@@ -269,6 +274,12 @@ To experiment with the metaprogramming, you need to do these three things:
 2) edit your `device.nim` to `import metagenerator.nim`.  Nim grabs the local
    copy instead of the one from the library.
 3) edit the local `metagenerator.nim` to generate the output you want.
+
+## Tests
+
+This repository contains tests that should grow with the code.
+Right now, there is one test that will fail the very first time the tests are run.
+Just run the tests again: `nimble test`
 
 ## The author would like to thank
 

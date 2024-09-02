@@ -97,6 +97,11 @@ template declareRegister*(
     derivedFrom: untyped
 ): untyped =
   type `peripheralName _ registerName Val`* {.inject.} = object of `peripheralName _ derivedFrom Val`
+  ## Declares `PERIPH_REGVal` derived from another register,
+  ## so that the two registers are type-compatible.
+  ## The `PERIPH_REGVal` type does NOT need to be public.
+  ## The programmer receives a value of this type by reading
+  ## the register: `var v = PERIPH.REG`
   declareRegisterBody(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc)
 
 template declareRegister*(
@@ -108,6 +113,11 @@ template declareRegister*(
     registerDesc: static string
 ): untyped =
   type `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
+  ## Declares `PERIPH_REGVal` as a distinct type
+  ## so that no other register value types are compatible.
+  ## The `PERIPH_REGVal` type does NOT need to be public.
+  ## The programmer receives a value of this type by reading
+  ## the register: `var v = PERIPH.REG`
   declareRegisterBody(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc)
 
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
@@ -157,6 +167,12 @@ template declareField*(
     writeAccess: static bool,
     fieldDesc: static string,
 ) =
+  ## Declares read and write funcs for a register's bit field.
+  ## The read and write funcs perform the necessary bit shifting and masking
+  ## to ensure only the named fields are impacted.
+  ##
+  ## Field read-modify-writes must be terminated with the `.write()`
+  ## More than one field-write funcs can be chained. `PERIPH.REG.FIELD1(11).FIELD2(42).write()`
   when readAccess:
     template `fieldName`*(
         regVal: `peripheralName _ registerName Val`
@@ -172,6 +188,8 @@ template declareField*(
       )
 
 macro declareEnum(enumType: untyped, enumPairsStmtList: untyped) {.inject.} =
+  ## Declares a Nim enumerator with the given type that is bound to a specific register.
+  ## The enum names and values are from the SVD file.
   enumPairsStmtList.expectKind(nnkStmtList)
   var fields: seq[NimNode]
   for asgnNode in enumPairsStmtList:
@@ -180,7 +198,7 @@ macro declareEnum(enumType: untyped, enumPairsStmtList: untyped) {.inject.} =
     node.add(asgnNode[0])
     node.add(asgnNode[1])
     fields.add(node)
-  newEnum(enumType, fields, true, true)
+  newEnum(name = enumType, fields = fields, public = true, pure = true)  # TODO: are we sure we want pure?
 
 macro declareFieldEnum*(
   peripheralName: untyped,
@@ -190,6 +208,8 @@ macro declareFieldEnum*(
   bitWidth: static int,
   values: untyped
 ) {.inject.} =
+  ## Declares enum values that are bound to a specific `PERIPH.REG`.
+  ## Also declares a method to write the enum value to a register field: `PERIPH.REG.FIELD1(ENUMVAL).write()`
   let enumType = ident(peripheralName.strVal & '_' & registerName.strVal & '_' & fieldName.strVal & "Val")
   let regValType = ident(peripheralName.strVal & '_' & registerName.strVal & "Val")
   result = quote do:
