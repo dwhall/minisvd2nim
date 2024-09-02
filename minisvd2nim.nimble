@@ -1,8 +1,10 @@
+#!fmt: off
+
 # Package
 
-version       = "0.1.0"
+version       = "0.1.1"
 author        = "!!Dean"
-description   = "A smaller svd2nim tool"
+description   = "A smaller SVD to nim generator tool"
 license       = "MIT"
 srcDir        = "src"
 installExt    = @["nim"]
