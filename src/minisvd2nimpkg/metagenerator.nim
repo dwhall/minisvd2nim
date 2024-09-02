@@ -96,12 +96,12 @@ template declareRegister*(
     registerDesc: static string,
     derivedFrom: untyped
 ): untyped =
-  type `peripheralName _ registerName Val`* {.inject.} = object of `peripheralName _ derivedFrom Val`
   ## Declares `PERIPH_REGVal` derived from another register,
   ## so that the two registers are type-compatible.
   ## The `PERIPH_REGVal` type does NOT need to be public.
   ## The programmer receives a value of this type by reading
   ## the register: `var v = PERIPH.REG`
+  type `peripheralName _ registerName Val`* {.inject.} = `peripheralName _ derivedFrom Val`
   declareRegisterBody(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc)
 
 template declareRegister*(
@@ -112,12 +112,12 @@ template declareRegister*(
     writeAccess: static bool,
     registerDesc: static string
 ): untyped =
-  type `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
   ## Declares `PERIPH_REGVal` as a distinct type
   ## so that no other register value types are compatible.
   ## The `PERIPH_REGVal` type does NOT need to be public.
   ## The programmer receives a value of this type by reading
   ## the register: `var v = PERIPH.REG`
+  type `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
   declareRegisterBody(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc)
 
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
