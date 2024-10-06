@@ -2,7 +2,7 @@
 
 # Package
 
-version       = "0.1.1"
+version       = "0.2.0"
 author        = "!!Dean"
 description   = "A smaller SVD to nim generator tool"
 license       = "MIT"

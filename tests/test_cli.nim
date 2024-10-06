@@ -1,7 +1,4 @@
-import std/files
-import std/os
-import std/paths
-import unittest
+import std/[files, os, paths, unittest]
 
 # Check that the project has been built
 let exe = when defined(windows): "minisvd2nim.exe" else: "minisvd2nim"
@@ -13,5 +10,7 @@ test "the CLI should run with no input":
   check 0 == execShellCmd(cmd)
 
 test "the CLI should process the example STM32 .svd file":
-  let cmd = fullExe.string & " tests" / "STM32F446_v1_7.svd > example" / "stm32f446.nim"
+  let cmd = fullExe.string & " tests" / "STM32F446_v1_7.svd"
   check 0 == execShellCmd(cmd)
+  # remove the directory that was just created by the test
+  os.removeDir("stm32f446")

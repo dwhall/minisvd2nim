@@ -8,12 +8,14 @@
 ## References:
 ##    https://gcc.gnu.org/onlinedocs/gcc/Using-Assembly-Language-with-C.html
 ##
+## DEVELOPERS: if you edit this file in a way that changes the generated
+## output, you MUST update at least the minisvd2nim tool's version number.
+##
 
-import std/macros
-import std/volatile
+import std/[macros, volatile]
 
 # FIXME: find a compiler-agnostic way to check for support
-# of the BFI and UBFX instructions.
+# of ARM instructions BFI and UBFX.
 # For now, this assumes arch v4 (armv7 and later) supports
 # the instructions used in emit/asm pragmas below.
 const ARM_ARCH {.intdefine: "__ARM_ARCH".} = 0
@@ -121,9 +123,9 @@ template declareRegister*(
   declareRegisterBody(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc)
 
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
-  ## Extracts a bitfield from regVal, zero extends it to 32 bits.
-  ## Returns the field value, down-shifted to no bit offset, as a register-distinct type.
-  ## Employs the Unsigned Bit Field eXtract instruction, UBFX, when the target supports it.
+  # Extracts a bitfield from regVal, zero extends it to 32 bits.
+  # Returns the field value, down-shifted to no bit offset, as a register-distinct type.
+  # Employs the Unsigned Bit Field eXtract instruction, UBFX, when the target supports it.
   doAssert bitOffset >= 0, "bitOffset must not be negative"
   doAssert bitWidth > 0, "bitWidth must be greater than zero"
   doAssert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
@@ -140,9 +142,9 @@ func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.in
 func setField[T](
     regVal: T, fieldVal: RegisterVal, bitOffset: static int, bitWidth: static int
 ): T {.inline.} =
-  ## Replaces width bits in regVal starting at the low bit position bitOffset,
-  ## with bitWidth bits from fieldVal starting at bit[0]. Other bits in regVal are unchanged.
-  ## Employs the ARMv7 Bit Field Insert instruction, BFI, when the target supports it.
+  # Replaces width bits in regVal starting at the low bit position bitOffset,
+  # with bitWidth bits from fieldVal starting at bit[0]. Other bits in regVal are unchanged.
+  # Employs the ARMv7 Bit Field Insert instruction, BFI, when the target supports it.
   doAssert bitOffset >= 0, "bitOffset must not be negative"
   doAssert bitWidth > 0, "bitWidth must be greater than zero"
   doAssert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
@@ -180,16 +182,16 @@ template declareField*(
       getField[`peripheralName _ registerName Val`](regVal, bitOffset, bitWidth)
 
   when writeAccess:
-    proc `fieldName`*(
+    template `fieldName`*(
         regVal: `peripheralName _ registerName Val`, fieldVal: uint32
-    ): `peripheralName _ registerName Val` {.inline.} =
+    ): `peripheralName _ registerName Val` =
       setField[`peripheralName _ registerName Val`](
         regVal, fieldVal, bitOffset, bitWidth
       )
 
 macro declareEnum(enumType: untyped, enumPairsStmtList: untyped) {.inject.} =
-  ## Declares a Nim enumerator with the given type that is bound to a specific register.
-  ## The enum names and values are from the SVD file.
+  # Declares a Nim enumerator with the given type that is bound to a specific register.
+  # The enum names and values are from the SVD file.
   enumPairsStmtList.expectKind(nnkStmtList)
   var fields: seq[NimNode]
   for asgnNode in enumPairsStmtList:

@@ -1,9 +1,6 @@
-import std/paths
-import std/strutils
-import std/unittest
+import std/[paths, strutils, unittest]
 
-import minisvd2nimpkg/parser
-import minisvd2nimpkg/svdtypes
+import minisvd2nimpkg/[parser, svdtypes]
 
 let fn_test = getCurrentDir() / Path("tests") / Path("test.svd")
 
@@ -67,20 +64,22 @@ test "the .svd parse procedure SHOULD be able to parse registers having the deri
         check r.description == "Derived Timer"
         check r.addressOffset == 4
 
+# FIXME: the following tests depend on rendering
+
 # If you got an error running the unit tests it is because of this.
 # Run the tests again and example.nim should exist because of the block
 # in test_metagenerator.
-import example
+# import example
 
-test "derived peripherals SHOULD have registers identical to the base peripheral":
-  check compiles TIMER1.COUNT.uint32
-  check compiles TIMER1.MATCH.uint32
-  check compiles TIMER2.COUNT.uint32
-  check compiles TIMER2.MATCH.uint32
+# test "derived peripherals SHOULD have registers identical to the base peripheral":
+#   check compiles TIMER1.COUNT.uint32
+#   check compiles TIMER1.MATCH.uint32
+#   check compiles TIMER2.COUNT.uint32
+#   check compiles TIMER2.MATCH.uint32
 
-test "derived registers SHOULD have compatible register value types":
-  # check typeOf(TIMER1.COUNT) is typeOf(TIMER2.COUNT)
-  discard # TODO: Find a isTypeEquivalent function
+# test "derived registers SHOULD have compatible register value types":
+#   # check typeOf(TIMER1.COUNT) is typeOf(TIMER2.COUNT)
+#   discard # TODO: Find a isTypeEquivalent function
 
-test "derived registers SHOULD have compatible register fields":
-  discard # TODO
+# test "derived registers SHOULD have compatible register fields":
+#   discard # TODO

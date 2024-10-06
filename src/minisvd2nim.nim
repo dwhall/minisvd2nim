@@ -2,59 +2,73 @@
 ## parses the given .svd input file and outputs nim source to stdout.
 ##
 
-import std/[files, parseopt, paths, strutils]
+import std/[files, parseopt, paths, strformat, strutils]
 
 import minisvd2nimpkg/parser
 import minisvd2nimpkg/renderer
 import minisvd2nimpkg/versions
 
-const Version = "version: " & getVersion() & "\p"
-const Usage = "minisvd2nim [option] [<input.svd>]\p"
-const Help = """
+const version = &"version: {getVersion()}\p"
+const usage = "minisvd2nim [option] [<input.svd>]\p"
+const help =
+  &"""
 minisvd2nim - Generate Nim source from System View Description XML
 
 Copyright 2024 Dean Hall.  See LICENSE.txt for details.
 
 Usage:
-""" & Usage & """
+  {usage}
 
 Options:
+  -p / --path=<path>    set the path where the device package is written
   --version             show the version
   --help                show this help
 """
 
-proc parseArgs(): Path
-proc writeMsgAndQuit(msg: string)
+proc parseArgs(): tuple[svdFn: Path, outPath: Path]
+proc validateArgs(svdFn: Path, outPath: Path)
+proc writeMsgAndQuit(msg: string, errorCode: int = QuitFailure)
 
 proc main() =
-  let fn = parseArgs()
-  let svd = parseSvdFile(fn)
-  renderNimFromSvd(stdout, svd)
+  let (svdFn, outPath) = parseArgs()
+  validateArgs(svdFn, outPath)
+  let svd = parseSvdFile(fn = svdFn)
+  renderNimPackageFromSvd(outPath = outPath, device = svd)
 
-proc parseArgs(): Path =
-  ## Returns only if a valid file is given
-  ## otherwise it acts on any options and exits
+proc parseArgs(): tuple[svdFn: Path, outPath: Path] =
+  ## Returns only if a proper combination of arguments are given;
+  ## otherwise it prints a message and exits
+  var svdFn: Path
+  var outPath = getCurrentDir()
   for kind, key, val in getopt():
     case kind
     of cmdLongOption, cmdShortOption:
       case normalize(key)
-      of "version", "v": writeMsgAndQuit(Version)
-      else: writeMsgAndQuit(Help)
-    of cmdArgument:
-      let fn = absolutePath(Path(key))
-      if key.len > 0 and fileExists(fn):
-        return Path(key)
+      of "version", "v":
+        writeMsgAndQuit(version)
+      of "path", "p":
+        outPath = absolutePath(Path(val))
       else:
-        let error = "File does not exist: " & fn.string & "\p"
-        writeMsgAndQuit(error)
+        writeMsgAndQuit(help)
+    of cmdArgument:
+      svdFn = absolutePath(Path(key))
     of cmdEnd:
       break
-  writeMsgAndQuit(Usage)
+  return (svdFn, outPath)
 
-proc writeMsgAndQuit(msg: string) =
+proc writeMsgAndQuit(msg: string, errorCode: int = QuitFailure) =
   stdout.write(msg)
   stdout.flushFile()
-  quit(0)
+  quit(errorCode)
+
+proc validateArgs(svdFn: Path, outPath: Path) =
+  # If no file was given, quit successfully
+  if svdFn.string == "":
+    writeMsgAndQuit(usage, QuitSuccess)
+
+  # If the given file cannot be found, quit with error
+  if not fileExists(svdFn):
+    writeMsgAndQuit(usage)
 
 if isMainModule:
   main()

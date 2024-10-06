@@ -1,8 +1,6 @@
-import std/paths
-import std/unittest
+import std/[os, paths, strutils, unittest]
 
-import minisvd2nimpkg/parser
-import minisvd2nimpkg/renderer
+import minisvd2nimpkg/[parser, renderer]
 
 ## example.svd comes from: https://www.keil.com/pack/doc/CMSIS/SVD/html/svd_Example_pg.html
 ## and is manually modified for specific tests using examples from:
@@ -10,13 +8,15 @@ import minisvd2nimpkg/renderer
 
 block:
   # Build a example.nim file from example.svd
-  let fn_example = getCurrentDir() / Path("tests") / Path("example.svd")
+  let fn_example = paths.getCurrentDir() / Path("tests") / Path("example.svd")
   let svd = parseSvdFile(fn_example)
   let fn_example_nim = changeFileExt(fn_example, "nim")
   var outf = open(fn_example_nim.string, fmWrite)
   defer:
     outf.close()
-  renderNimFromSvd(outf, svd)
+  renderNimPackageFromSvd(paths.getCurrentDir(), svd)
+  # remove the directory that was just created by the test
+  os.removeDir(toLower("ARM_Example"))
 
 # If you got an error running the unit tests it is because of this.
 # Run the tests again and example.nim should exist because of the block above.

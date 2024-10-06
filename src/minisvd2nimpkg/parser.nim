@@ -331,13 +331,13 @@ func parseSvdEnumValue(enumValNode: XmlNode): SvdEnumVal =
 func parseAnyInt(s: string): int =
   let lowercase = s.toLower()
   if lowercase.startsWith("0x"):
-    result = parseHexInt(lowercase).int
+    result = parseHexInt(lowercase)
   elif lowercase.startsWith("0b"):
     result = parseBinaryInt(lowercase[2 ..^ 1])
   elif lowercase.startsWith("#"):
     result = parseBinaryInt(lowercase[1 ..^ 1])
   else:
-    result = parseInt(lowercase).int
+    result = parseInt(lowercase)
 
 func parseBinaryInt(s: string): int =
   ## Argument, s, must have any prefix removed so that s[0] is '0' or '1'
