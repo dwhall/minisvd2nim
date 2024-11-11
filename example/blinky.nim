@@ -1,7 +1,7 @@
 # Run `nimble test` from the project root directory
-# to build the device file, stm32f446.nim
+# to build the device package, stm32f446/
 
-import stm32f429/[rcc, gpioa]
+import stm32f446/[rcc, gpioa]
 
 proc main() =
   # Enable GPIO A and set A5 as an output
