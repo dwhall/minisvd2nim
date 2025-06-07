@@ -19,7 +19,6 @@ requires "nim >= 2.0.0"
 
 after build:
   ## Runs minisvd2nim to generate files for use by the example
-  echo "after build"
   when defined(windows):
     const tool = "minisvd2nim.exe"
     const dirSep = "\\"
@@ -29,8 +28,9 @@ after build:
   assert fileExists(tool)
   let currDir = getCurrentDir()
   let minisvd2nim = currDir & dirSep & tool
-  let examplesDir = currDir & dirSep & "example"
+  let exampleDir = currDir & dirSep & "example"
   let svdFile = currDir & dirSep & "tests" & dirSep & "STM32F446_v1_7.svd"
   assert fileExists(svdFile)
-  cd(examplesDir)
-  exec(minisvd2nim & " " & svdFile)
+  if not dirExists(exampleDir & dirSep & "stm32f446"):
+    cd(exampleDir)
+    exec(minisvd2nim & " " & svdFile)

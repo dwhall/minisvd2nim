@@ -4,9 +4,7 @@
 
 import std/[files, parseopt, paths, strformat, strutils]
 
-import minisvd2nimpkg/parser
-import minisvd2nimpkg/renderer
-import minisvd2nimpkg/versions
+import minisvd2nimpkg/[parser, renderer, versions]
 
 const version = &"version: {getVersion()}\p"
 const usage = "minisvd2nim [option] [<input.svd>]\p"
