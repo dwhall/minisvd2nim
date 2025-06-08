@@ -81,11 +81,9 @@ func parseSvdDevice(
   result.size = parseAnyInt(deviceNode.child("size").innerText)
   result.resetValue = parseHexInt(deviceNode.child("resetValue").innerText).uint32
   result.resetMask = parseHexInt(deviceNode.child("resetMask").innerText).uint32
-  let cpuNode = deviceNode.child("cpu")
-  result.cpu = parseSvdCpu(cpuNode)
-  let peripheralsNode = deviceNode.child("peripherals")
+  result.cpu = parseSvdCpu(deviceNode.child("cpu"))
   parseSvdPeripherals(
-    peripheralsNode, result.peripherals, peripheralCache, registerCache
+    deviceNode.child("peripherals"), result.peripherals, peripheralCache, registerCache
   )
   let accessNode = deviceNode.child("access")
   let accessText = if isNil(accessNode): "read-only" else: accessNode.innerText

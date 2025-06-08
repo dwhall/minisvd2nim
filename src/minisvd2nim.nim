@@ -6,17 +6,17 @@ import std/[files, parseopt, paths, strformat, strutils]
 
 import minisvd2nimpkg/[parser, renderer, versions]
 
-const version = &"version: {getVersion()}\p"
-const usage = "minisvd2nim [option] [<input.svd>]\p"
-const help =
-  &"""
+const
+  version = &"version: {getVersion()}\p"
+  usage = "minisvd2nim [option] [<input.svd>]\p"
+  copyright = "Copyright 2024 Dean Hall. See LICENSE.txt for details.\p"
+  help =
+    &"""
 minisvd2nim - Generate Nim source from System View Description XML
 
-Copyright 2024 Dean Hall.  See LICENSE.txt for details.
-
+{copyright}
 Usage:
   {usage}
-
 Options:
   -p / --path=<path>    set the path where the device package is written
   --version             show the version
@@ -25,13 +25,16 @@ Options:
 
 proc parseArgs(): tuple[svdFn: Path, outPath: Path]
 proc validateArgs(svdFn: Path, outPath: Path)
-proc writeMsgAndQuit(msg: string, errorCode: int = QuitFailure)
+func writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure)
 
 proc main() =
-  let (svdFn, outPath) = parseArgs()
-  validateArgs(svdFn, outPath)
-  let svd = parseSvdFile(fn = svdFn)
-  renderNimPackageFromSvd(outPath = outPath, device = svd)
+  try:
+    let (svdFn, outPath) = parseArgs()
+    validateArgs(svdFn, outPath)
+    let svd = parseSvdFile(fn = svdFn)
+    renderNimPackageFromSvd(outPath = outPath, device = svd)
+  except IOError as e:
+    writeMsgAndQuit(stdout, "Error: " & e.msg & "\n" & usage)
 
 proc parseArgs(): tuple[svdFn: Path, outPath: Path] =
   ## Returns only if a proper combination of arguments are given;
@@ -43,30 +46,30 @@ proc parseArgs(): tuple[svdFn: Path, outPath: Path] =
     of cmdLongOption, cmdShortOption:
       case normalize(key)
       of "version", "v":
-        writeMsgAndQuit(version)
+        writeMsgAndQuit(stdout, version)
       of "path", "p":
         outPath = absolutePath(Path(val))
       else:
-        writeMsgAndQuit(help)
+        writeMsgAndQuit(stdout, help)
     of cmdArgument:
       svdFn = absolutePath(Path(key))
     of cmdEnd:
       break
   return (svdFn, outPath)
 
-proc writeMsgAndQuit(msg: string, errorCode: int = QuitFailure) =
-  stdout.write(msg)
-  stdout.flushFile()
+func writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure) =
+  outFile.write(msg)
+  outFile.flushFile()
   quit(errorCode)
 
 proc validateArgs(svdFn: Path, outPath: Path) =
   # If no file was given, quit successfully
   if svdFn.string == "":
-    writeMsgAndQuit(usage, QuitSuccess)
+    writeMsgAndQuit(stdout, usage, QuitSuccess)
 
   # If the given file cannot be found, quit with error
   if not fileExists(svdFn):
-    writeMsgAndQuit(usage)
+    writeMsgAndQuit(stdout, usage)
 
 if isMainModule:
   main()
