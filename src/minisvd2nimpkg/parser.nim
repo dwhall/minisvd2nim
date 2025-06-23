@@ -51,7 +51,7 @@ func parseSvdDistinctRegister(registerNode: XmlNode): SvdRegister
 func parseSvdDerivedRegister(
   registerNode: XmlNode, derivedFrom: SvdRegister
 ): SvdRegister
-func parseSvdAccess(accessNode: XmlNode, access: var SvdAccess)
+func parseSvdAccess(accessNode: XmlNode): SvdAccess
 func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField])
 func parseSvdFieldEnum(enumValsNode: XmlNode, enumeratedValues: var SvdFieldEnum)
 func parseSvdEnumValue(enumValNode: XmlNode): SvdEnumVal
@@ -86,12 +86,7 @@ func parseSvdDevice(
     deviceNode.child("peripherals"), result.peripherals, peripheralCache, registerCache
   )
   let accessNode = deviceNode.child("access")
-  let accessText = if isNil(accessNode): "read-only" else: accessNode.innerText
-  result.access =
-    case accessText
-    of "write-only": SvdAccess.writeOnly
-    of "read-write": SvdAccess.readWrite
-    else: SvdAccess.readOnly
+  result.access = parseSvdAccess(accessNode)
 
 func parseSvdCpu(cpuNode: XmlNode): ref SvdCpu =
   if isNil(cpuNode):
@@ -251,20 +246,19 @@ func parseSvdDistinctRegister(registerNode: XmlNode): SvdRegister =
   let resetValueNode = registerNode.child("resetValue")
   if not isNil(resetValueNode):
     result.resetValue = parseAnyInt(resetValueNode.innerText).uint32
-  let accessNode = registerNode.child("access")
-  parseSvdAccess(accessNode, result.access)
+  result.access = parseSvdAccess(registerNode.child("access"))
   let fieldsNode = registerNode.child("fields")
   parseSvdFields(fieldsNode, result.fields)
-  let dimNode = registerNode.child("dim")
 
-func parseSvdAccess(accessNode: XmlNode, access: var SvdAccess) =
+func parseSvdAccess(accessNode: XmlNode): SvdAccess =
   # TODO: change "read-only" to parse-context's device.access
-  let accessText = if isNil(accessNode): "read-only" else: accessNode.innerText
-  access =
-    case accessText
+  if isNil(accessNode):
+    SvdAccess.readWrite
+  else:
+    case accessNode.innerText
     of "write-only": SvdAccess.writeOnly
-    of "read-write": SvdAccess.readWrite
-    else: SvdAccess.readOnly
+    of "read-only": SvdAccess.readOnly
+    else: SvdAccess.readWrite
 
 func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField]) =
   if isNil(fieldsNode):
@@ -278,8 +272,7 @@ func parseSvdField(fieldNode: XmlNode): SvdRegField =
   if not isNil(descriptionNode):
     result.description = removeWhitespace(descriptionNode.innerText)
   parseSvdFieldBitRange(fieldNode, result)
-  let accessNode = fieldNode.child("access")
-  parseSvdAccess(accessNode, result.access)
+  result.access = parseSvdAccess(fieldNode.child("access"))
   let enumNode = fieldNode.child("enumeratedValues")
   parseSvdFieldEnum(enumNode, result.enumeratedValues)
 
@@ -310,8 +303,7 @@ func parseSvdFieldEnum(enumValsNode: XmlNode, enumeratedValues: var SvdFieldEnum
   let name = enumValsNode.child("name")
   if not isNil(name):
     enumeratedValues.name = name.innerText
-  let accessNode = enumValsNode.child("access")
-  parseSvdAccess(accessNode, enumeratedValues.access)
+  enumeratedValues.access = parseSvdAccess(enumValsNode.child("access"))
   for enode in enumValsNode.findAll("enumeratedValue"):
     enumeratedValues.values.add(parseSvdEnumValue(enode))
 
