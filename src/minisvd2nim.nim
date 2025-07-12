@@ -32,7 +32,7 @@ proc main() =
     let (svdFn, outPath) = parseArgs()
     validateArgs(svdFn, outPath)
     let svd = parseSvdFile(fn = svdFn)
-    renderNimPackageFromSvd(outPath = outPath, device = svd)
+    renderNimPackageFromParsedSvd(outPath = outPath, device = svd)
   except IOError as e:
     writeMsgAndQuit(stdout, "Error: " & e.msg & "\n" & usage)
 

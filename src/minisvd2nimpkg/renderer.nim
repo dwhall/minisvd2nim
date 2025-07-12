@@ -2,9 +2,9 @@
 ##
 ## renderer.nim
 ##
-## Renders an SvdDevice object to a Nim source package.
+## Renders the output of the parser's parseSvdFile() to a Nim source package.
 ##
-## renderNimPackageFromSvd() is the only entry point to this module.
+## renderNimPackageFromParsedSvd() is the only entry point to this module.
 ## It takes the arguments outPath and svdDevice
 ## and produces a nimble-compliant package of nim source code.
 ## outPath is a path of where to put the new nimble package directory:
@@ -25,20 +25,20 @@
 ## or added to a project as a dependency in source form.
 ##
 
-import std/[dirs, files, os, paths, strformat, strutils]
+import std/[algorithm, dirs, files, os, paths, sequtils, strformat, strutils]
 
 import svdtypes
 import versions
 
 using
-  device: SvdDevice
+  device: SvdElementValue
   devicePath: Path
   outPath: Path
   outf: File
-  peripheral: SvdPeripheral
-  interrupt: SvdInterrupt
-  register: SvdRegister
-  field: SvdRegField
+  peripheral: SvdElementValue
+  interrupt: SvdElementValue
+  register: SvdElementValue
+  field: SvdElementValue
   access: SvdAccess
 
 const importMetaGenerator =
@@ -58,16 +58,32 @@ proc renderPeripheral(outf, device, peripheral)
 proc renderInterrupt(outf, device, peripheral, interrupt)
 proc renderRegister(outf, device, peripheral, register)
 proc renderField(outf, device, peripheral, register, field)
-func getPeripheralBaseName(p: SvdPeripheral): string
+func getPeripheralBaseName(p: SvdElementValue): string
 
 func readAccess(access): bool =
-  access == unspecified or access == readWrite or access == readOnly or
-    access == readWriteOnce
+  access == readWrite or access == readOnly
 func writeAccess(access): bool =
-  access == unspecified or access == readWrite or access == writeOnly or
-    access == writeOnce or access == readWriteOnce
+  access == readWrite or access == writeOnly
 
-proc renderNimPackageFromSvd*(outPath, device) =
+func removeWhitespace(s: string): string =
+  ## Converts all whitespace to a single space
+  s.splitWhitespace.join(" ")
+
+func getAccess(elements: varargs[ptr SvdElementValue]): SvdAccess =
+  ## Returns the access value from the tail-most argument that exists.
+  ## If none of the arguments has an access field,
+  ## returns read-write access as default.
+  ## The caller MUST order the elements: device, peripheral, register, field
+  ## in order for the access to be determined correctly.
+  const unspecifiedDefault = SvdAccess.readWrite
+  let els = elements.reversed()
+  for el in els:
+    let accessEl = el[].getElement("access")
+    if accessEl != nilElementValue:
+      return parseEnum[SvdAccess](accessEl.value)
+  return unspecifiedDefault
+
+proc renderNimPackageFromParsedSvd*(outPath, device) =
   ## Renders the Nim device package at the outPath path.
   ## The result is a nimblec-compliant package:
   ##    <outPath>/<device.name.toLower>/
@@ -77,7 +93,10 @@ proc renderNimPackageFromSvd*(outPath, device) =
   ##        ...
   ##
   assert dirExists(outPath)
-  let devicePath = outPath / Path(device.name.toLower())
+  assert device.name == "device",
+    "Expected top-level element, 'device', got: " & device.name
+  let deviceName = device.getElement("name").value
+  let devicePath = outPath / Path(deviceName.toLower())
   if dirExists(devicePath):
     stderr.write(&"Exiting.  Target path already exists: {devicePath.string}")
     quit(QuitFailure)
@@ -89,7 +108,8 @@ proc renderNimPackageFromSvd*(outPath, device) =
   renderPeripherals(devicePath, device)
 
 proc renderPackageFile(devicePath, device) =
-  let packageFn = devicePath / Path(device.name.toLower).addFileExt("nimble")
+  let deviceName = device.getElement("name").value
+  let packageFn = devicePath / Path(deviceName.toLower()).addFileExt("nimble")
   var outf: File
   assert outf.open(packageFn.string, fmWrite)
   defer:
@@ -100,7 +120,7 @@ proc renderPackageFile(devicePath, device) =
 
 version       = {getVersion().strip()}  # same as minisvd2nim's version
 author        = "minisvd2nim (generated)"
-description   = "Device and peripheral modules for the {device.name}."
+description   = "Device and peripheral modules for the {deviceName}."
 license       = "MIT"
 
 requires
@@ -125,7 +145,7 @@ Edits will be lost if the tool is run again.
 Tool:                 {toolName}
 Tool version:         {getVersion().strip()}
 Tool args:            {commandLineParams()}
-Input file version:   {device.version}
+Input file version:   {device.getElement("version").value}
 """
   )
 
@@ -152,9 +172,15 @@ proc renderDevice(devicePath, device) =
   assert outf.open(fn.string, fmWrite)
   defer:
     outf.close()
+  let deviceName = device.getElement("name").value
+  let cpu = device.getElement("cpu")
+  # FIXME?: Failing to check spec for data types.
+  let mpuPresent = cpu.getElement("mpuPresent").value
+  let fpuPresent = cpu.getElement("fpuPresent").value
+  let nvicPrioBits = cpu.getElement("nvicPrioBits").value
   outf.write(
     importMetaGenerator & &"#!fmt: off\n" &
-      &"declareDevice(deviceName = {device.name}, mpuPresent = {device.cpu.mpuPresent}, fpuPresent = {device.cpu.fpuPresent}, nvicPrioBits = {device.cpu.nvicPrioBits})\p"
+      &"declareDevice(deviceName = {deviceName}, mpuPresent = {mpuPresent}, fpuPresent = {fpuPresent}, nvicPrioBits = {nvicPrioBits})\p"
   )
 
 proc renderPeripherals(devicePath, device) =
@@ -162,7 +188,8 @@ proc renderPeripherals(devicePath, device) =
   ## Write enumerated peripherals to a common module
   ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
   var outf: File
-  for p in device.peripherals:
+  for p in device.getElement("peripherals").elements:
+    assert p.name == "peripheral"
     let lowerPeriphName = getPeripheralBaseName(p).toLower
     let periphModule = devicePath / Path(lowerPeriphName).addFileExt("nim")
     let exists = fileExists(periphModule)
@@ -173,46 +200,70 @@ proc renderPeripherals(devicePath, device) =
     outf.renderPeripheral(device, p)
     outf.close()
 
-func getPeripheralBaseName(p: SvdPeripheral): string =
+func getPeripheralBaseName(p: SvdElementValue): string =
   ## Removes digits from the tail of the peripheral's name.
   ## Returns the possibly shortened peripheral name.
-  let fullName = p.name
+  assert p.name == "peripheral"
+  let fullName = p.getElement("name").value
   var i = len(fullName) - 1
   while i > 0 and fullName[i].isDigit:
     dec i
   result = fullName[0 .. i]
 
 proc renderPeripheral(outf, device, peripheral) =
+  let peripheralName = peripheral.getElement("name").value
+  let baseAddress = peripheral.getElement("baseAddress").value
+  let description = peripheral.getElement("description").value.removeWhitespace()
   outf.write(
-    &"declarePeripheral(peripheralName = {peripheral.name}, baseAddress = 0x{peripheral.baseAddress:X}'u32, peripheralDesc = \"{peripheral.description}\")\p"
+    &"declarePeripheral(peripheralName = {peripheralName}, baseAddress = {baseAddress}'u32, peripheralDesc = \"{description}\")\p"
   )
-  for irq in peripheral.interrupt:
+  for irq in peripheral.elements.filterIt(it.name == "interrupt"):
     renderInterrupt(outf, device, peripheral, irq)
-  for r in peripheral.registers:
+  for r in peripheral.getElement("registers").elements:
     renderRegister(outf, device, peripheral, r)
 
 proc renderInterrupt(outf, device, peripheral, interrupt) =
+  let peripheralName = peripheral.getElement("name").value
+  let interruptName = interrupt.getElement("name").value
+  let interruptValue = interrupt.getElement("value").value
+  let description = interrupt.getElement("description").value.removeWhitespace()
   outf.write(
-    &"declareInterrupt(peripheralName = {peripheral.name}, interruptName = {interrupt.name}, interruptValue = {interrupt.value}, interruptDesc = \"{interrupt.description}\")\p"
+    &"declareInterrupt(peripheralName = {peripheralName}, interruptName = {interruptName}, interruptValue = {interruptValue}, interruptDesc = \"{description}\")\p"
   )
 
 proc renderRegister(outf, device, peripheral, register) =
+  let peripheralName = peripheral.getElement("name").value
+  let registerName = register.getElement("name").value
+  let addressOffset = register.getElement("addressOffset").value
+  let registerAccess = getAccess(addr device, addr peripheral, addr register)
+  let description = register.getElement("description").value.removeWhitespace()
+  let derivedFrom = register.getAttr("derivedFrom").value
   let declaration =
-    if len(register.derivedFrom) > 0:
-      &"declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\", derivedFrom = {register.derivedFrom})\p"
+    if register.hasAttr("derivedFrom"):
+      &"declareRegister(peripheralName = {peripheralName}, registerName = {registerName}, addressOffset = {addressOffset}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\", derivedFrom = {derivedFrom})\p"
     else:
-      &"declareRegister(peripheralName = {peripheral.name}, registerName = {register.name}, addressOffset = 0x{toHex(register.addressOffset.uint, 8)}'u32, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, registerDesc = \"{register.description}\")\p"
+      &"declareRegister(peripheralName = {peripheralName}, registerName = {registerName}, addressOffset = {addressOffset}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\")\p"
   outf.write(declaration)
-  for f in register.fields:
+  for f in register.getElement("fields").elements:
     renderField(outf, device, peripheral, register, f)
 
 proc renderField(outf, device, peripheral, register, field) =
+  let peripheralName = peripheral.getElement("name").value
+  let registerName = register.getElement("name").value
+  let fieldName = field.getElement("name").value
+  let bitOffset = field.getElement("bitOffset").value
+  let bitWidth = field.getElement("bitWidth").value
+  let fieldAccess = getAccess(addr device, addr peripheral, addr register, addr field)
+  let description = field.getElement("description").value.removeWhitespace()
   outf.write(
-    &"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, readAccess = {readAccess(field.access)}, writeAccess = {writeAccess(field.access)}, fieldDesc = \"{field.description}\")\p"
+    &"declareField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffset}, bitWidth = {bitWidth}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
   )
-  if field.enumeratedValues.values.len > 0:
+  let enumElements = field.getElement("enumeratedValues").elements
+  if enumElements.len > 0:
     outf.write(
-      &"declareFieldEnum(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}):\p"
+      &"declareFieldEnum(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffset}, bitWidth = {bitWidth}):\p"
     )
-    for enumVal in field.enumeratedValues.values.items():
-      outf.write(&"  {enumVal.name} = {enumVal.value}\p")
+    for enumElement in enumElements:
+      let enumName = enumElement.getElement("name").value
+      let enumValue = enumElement.getElement("value").value
+      outf.write(&"  {enumName} = {enumValue}\p")

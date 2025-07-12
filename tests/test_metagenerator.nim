@@ -14,7 +14,7 @@ block:
   var outf = open(fn_example_nim.string, fmWrite)
   defer:
     outf.close()
-  renderNimPackageFromSvd(paths.getCurrentDir(), svd)
+  renderNimPackageFromParsedSvd(paths.getCurrentDir(), svd)
   # remove the directory that was just created by the test
   os.removeDir(toLower("ARM_Example"))
 

@@ -1,47 +1,67 @@
-import std/[dirs, files, paths, strutils, tempfiles, unittest]
+import std/[dirs, files, osproc, paths, strutils, tempfiles, unittest]
 
 import minisvd2nimpkg/[parser, renderer]
-
-var tempPath: Path
 
 suite "Test the renderer.":
   # made a suite in order to have setup/teardown
 
+  let fnTest = paths.getCurrentDir() / Path("tests") / Path("test.svd")
+  let devTest = parseSvdFile(fnTest)
+  var tempPath: Path
+
   setup:
     let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_renderer")
     tempPath = Path(tempDir)
+    renderNimPackageFromParsedSvd(tempPath, devTest)
+    let devicePath = tempPath / Path("ARMCM4".toLower)
 
   teardown:
     removeDir(tempPath)
 
-  let fnTest = paths.getCurrentDir() / Path("tests") / Path("test.svd")
-  let devTest = parseSvdFile(fnTest)
-
   test "there SHOULD be a procedure to render nim source":
-    check compiles(renderNimPackageFromSvd(tempPath, devTest))
+    check compiles(renderNimPackageFromParsedSvd(tempPath, devTest))
 
-  # test "DEBUG: generates a file to examine by hand":
-  #   renderNimPackageFromSvd(tempPath, devTest)
+  test "the renderer SHOULD output a package README":
+    check fileExists(devicePath / Path("README.txt"))
 
-  test "the render procedure SHOULD output a package README":
-    renderNimPackageFromSvd(tempPath, devTest)
-    check fileExists(tempPath / Path("ARMCM4".toLower) / Path("README.txt"))
+  test "the renderer SHOULD output a package LICENSE":
+    check fileExists(devicePath / Path("LICENSE.txt"))
 
+suite "Test the renderer on a big SVD file.":
   let fnStm32 = paths.getCurrentDir() / Path("tests") / Path("STM32F446_v1_7.svd")
   let devStm32 = parseSvdFile(fnStm32)
+  var tempPath: Path
 
-  test "the render procedure SHOULD output peripheral registers":
-    renderNimPackageFromSvd(tempPath, devStm32)
-    check fileExists(tempPath / Path("STM32F446".toLower) / Path("rtc.nim"))
+  setup:
+    let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_renderer")
+    tempPath = Path(tempDir)
+    renderNimPackageFromParsedSvd(tempPath, devStm32)
+    let devicePath = tempPath / Path("STM32F446".toLower)
 
-# FIXME:
-#
-# let fnExample = paths.getCurrentDir() / Path("tests") / Path("example.svd")
-# let devExample = parseSvdFile(fnExample)
-#
-# test "the render procedure SHOULD output enum arrays if they exist":
-#   renderNimPackageFromSvd(tempPath, devExample)
-#   f.setFilePos(0)
-#   let fileContents = f.readAll()
-#   f.close()
-#   check "Reset_Timer" in fileContents
+  # teardown:
+  #   removeDir(tempPath)
+
+  test "the renderer SHOULD output peripheral modules":
+    # check the first, last and a few other peripherals
+    for periph in ["dcmi", "rtc", "can", "sdio"]:
+      check fileExists(devicePath / Path(periph & ".nim"))
+
+  test "the renderer SHOULD NOT output non-existant peripheral modules":
+    for periph in ["foo", "bar", "baz", "can1", "dma2"]:
+      check not fileExists(devicePath / Path(periph & ".nim"))
+
+  test "the renderer SHOULD NOT output enumerated peripheral modules":
+    for periph in ["can1", "dma2"]:
+      check not fileExists(devicePath / Path(periph & ".nim"))
+
+  test "the renderer SHOULD generate modules that compile":
+    for periph in ["dcmi", "rtc", "can", "sdio"]:
+      let modPath = devicePath / Path(periph & ".nim")
+      let (_, exitCode) = execCmdEx("nim c " & modPath.string)
+      check exitCode == 0
+
+# TODO:
+# test "the renderer SHOULD output derivedFrom fields":
+# test "the renderer SHOULD output derivedFrom registers":
+# test "the renderer SHOULD output derivedFrom peripherals":
+# test "the renderer SHOULD output enum values":
