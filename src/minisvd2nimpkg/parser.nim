@@ -7,14 +7,9 @@
 ##    https://open-cmsis-pack.github.io/svd-spec/main/svd_Format_pg.html
 ##
 
-import std/[paths, strformat, tables, xmlparser, xmltree]
+import std/[paths, strformat, xmlparser, xmltree]
 
 import svdtypes, svd_spec
-
-type PeripheralCache* = ref Table[string, string]
-type RegisterCache* = ref Table[string, string]
-
-const nilElementValue = SvdElementValue()
 
 func addIfNotNil(elVals: var seq[SvdElementValue], el: SvdElementValue) =
   if el != nilElementValue:
@@ -35,12 +30,7 @@ func parseSvdAttributes(
           )
         )
 
-func parseSvdElement*(
-    xml: XmlNode,
-    spec: SvdElementSpec,
-    peripheralCache: var PeripheralCache,
-    registerCache: var RegisterCache,
-): SvdElementValue =
+func parseSvdElement*(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
   if xml.isNil:
     return nilElementValue
   assert xml.tag == spec.name, fmt"Expected tag '{spec.name}', got '{xml.tag}'"
@@ -54,19 +44,17 @@ func parseSvdElement*(
   for elSpec in spec.elements:
     if elSpec.isPossiblyMoreThanOne:
       for el in xml.findAll(elSpec.name):
-        let elVal = parseSvdElement(el, elSpec, peripheralCache, registerCache)
+        let elVal = parseSvdElement(el, elSpec)
         result.elements.addIfNotNil(elVal)
     else:
       let el = xml.child(elSpec.name)
       if elSpec.isRequired and el.isNil:
         discard # Log: required element is missing
       else:
-        let elVal = parseSvdElement(el, elSpec, peripheralCache, registerCache)
+        let elVal = parseSvdElement(el, elSpec)
         result.elements.addIfNotNil(elVal)
 
 proc parseSvdFile*(fn: Path): SvdElementValue =
-  var peripheralCache: PeripheralCache
-  var registerCache: RegisterCache
   let xml = loadXml(fn.string)
   assert xml.tag == "device"
-  result = parseSvdElement(xml, svdDeviceSpec, peripheralCache, registerCache)
+  result = parseSvdElement(xml, svdDeviceSpec)

@@ -6,7 +6,7 @@
 ## https://open-cmsis-pack.github.io/svd-spec/main/svd_Format_pg.html
 ##
 
-import std/tables
+import std/[sequtils, tables]
 import svdtypes
 
 const
@@ -244,6 +244,9 @@ func getSpec*(name: string): SvdElementSpec =
     "device": svdDeviceSpec,
   }.toTable
   nameToSpec[name]
+
+func hasAttr*(elSpec: SvdElementSpec, attrName: string): bool =
+  elSpec.attributes.anyIt(it.name == attrName)
 
 type SomeSvdSpec = SvdElementSpec | SvdAttributeSpec
 

@@ -1,22 +1,17 @@
-import std/[paths, sequtils, strutils, tables, unittest, xmlparser, xmltree]
+import std/[paths, sequtils, unittest, xmlparser]
 
 import minisvd2nimpkg/[parser, svd_spec, svdtypes]
 
 let fn_test = getCurrentDir() / Path("tests") / Path("test.svd")
 
-var unusedPeripheralCache = PeripheralCache()
-var unusedRegisterCache = RegisterCache()
-
 test "parseSvdElement SHOULD parse an empty tag":
   let xml = parseXml("<device></device>")
-  let el =
-    parseSvdElement(xml, svdDeviceSpec, unusedPeripheralCache, unusedRegisterCache)
+  let el = parseSvdElement(xml, svdDeviceSpec)
   check el.name == "device"
 
 test "parseSvdElement SHOULD parse attrs":
   let xml = parseXml("<device schemaVersion=\"3.14\"></device>")
-  let el =
-    parseSvdElement(xml, svdDeviceSpec, unusedPeripheralCache, unusedRegisterCache)
+  let el = parseSvdElement(xml, svdDeviceSpec)
   check el.attributes.len == 1
   check el.attributes[0].name == "schemaVersion"
   check el.attributes[0].value == "3.14"
@@ -24,8 +19,7 @@ test "parseSvdElement SHOULD parse attrs":
 test "parseSvdElement SHOULD parse /device element":
   let xml =
     parseXml("<device><vendor>ARM Ltd.</vendor><vendorID>ARM</vendorID></device>")
-  let el =
-    parseSvdElement(xml, svdDeviceSpec, unusedPeripheralCache, unusedRegisterCache)
+  let el = parseSvdElement(xml, svdDeviceSpec)
   check el.name == "device"
   check el.elements.len == 2
   # This test is fragile, the order of elements is not guaranteed
@@ -34,8 +28,7 @@ test "parseSvdElement SHOULD parse /device element":
 
 test "parseSvdElement SHOULD parse /device/cpu element":
   let xml = parseXml("<device><cpu><name>TestCPU</name></cpu></device>")
-  let el =
-    parseSvdElement(xml, svdDeviceSpec, unusedPeripheralCache, unusedRegisterCache)
+  let el = parseSvdElement(xml, svdDeviceSpec)
   check el.elements.len == 1
   check el.elements[0].name == "cpu"
   check el.elements[0].elements[0].name == "name"
@@ -55,7 +48,7 @@ test "parseSvdElement SHOULD parse peripherals element":
     """
   )
   let spec = getSpec("peripherals")
-  let el = parseSvdElement(xml, spec, unusedPeripheralCache, unusedRegisterCache)
+  let el = parseSvdElement(xml, spec)
   check el.name == "peripherals"
   check el.elements.len == 1
   check el.elements[0].name == "peripheral"
@@ -65,6 +58,29 @@ test "parseSvdElement SHOULD parse peripherals element":
     "name", "version", "description", "baseAddress", "addressBlock", "interrupt"
   ]:
     check periphFields.anyIt(it.name == name)
+
+test "parseSvdElement SHOULD parse derivedFrom attribute with value":
+  let xml = parseXml(
+    """
+  <peripherals>
+    <peripheral derivedFrom="TIMER0">
+      <name>TIMER1</name>
+      <baseAddress>0x40010100</baseAddress>
+      <interrupt>
+        <name>TIMER1</name>
+        <description>Timer 1 interrupt</description>
+        <value>4</value>
+      </interrupt>
+    </peripheral>
+    </peripherals>
+    """
+  )
+  let spec = getSpec("peripherals")
+  let el = parseSvdElement(xml, spec)
+  check el.name == "peripherals"
+  let periph = el.elements[0]
+  check periph.hasAttr("derivedFrom")
+  check periph.getAttr("derivedFrom").value == "TIMER0"
 
 test "parseSvdElement SHOULD parse registers":
   let xml = parseXml(
@@ -78,7 +94,7 @@ test "parseSvdElement SHOULD parse registers":
     """
   )
   let spec = getSpec("registers")
-  let el = parseSvdElement(xml, spec, unusedPeripheralCache, unusedRegisterCache)
+  let el = parseSvdElement(xml, spec)
   check el.name == "registers"
   check el.elements.len == 1
   check el.elements[0].name == "register"
@@ -106,7 +122,7 @@ test "parseSvdElement SHOULD parse fields":
     """
   )
   let spec = getSpec("fields")
-  let el = parseSvdElement(xml, spec, unusedPeripheralCache, unusedRegisterCache)
+  let el = parseSvdElement(xml, spec)
   check el.name == "fields"
   check el.elements.len == 2
   check el.elements[0].name == "field"

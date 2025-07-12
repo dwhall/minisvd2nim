@@ -1,5 +1,6 @@
 ## Copyright 2024 Dean Hall, all rights reserved.  See LICENSE.txt for details.
 ##
+import std/sequtils
 
 type
   # TODO: Use parseEnum[SvdEndianness] from std/strutils
@@ -74,14 +75,27 @@ type
     defaultValue*: string
     elements*: seq[SvdElementSpec]
 
-  # The parser uses the spec to turn the XML into a tree of SvdElementValues
-  SvdElementValue* = object
+  # The parser uses the spec to turn the full SVD XML tree
+  # into a tree of SvdElementValues, which is given to the renderer.
+  SvdElementValue* {.acyclic.} = object
     name*: string
     value*: string
     dataType*: SvdElementType
     attributes*: seq[SvdElementValue]
     elements*: seq[SvdElementValue]
 
+const nilElementValue* = SvdElementValue()
+
 func `==`*(a, b: SvdElementValue): bool =
   ## Compare two SvdElementValues for equality
   return a.name == b.name and a.value == b.value and a.dataType == b.dataType
+
+func hasAttr*(elVal: SvdElementValue, attrName: string): bool =
+  elVal.attributes.anyIt(it.name == attrName)
+
+func getAttr*(elVal: SvdElementValue, attrName: string): SvdElementValue =
+  ## Get the attribute value by name
+  for attr in elVal.attributes:
+    if attr.name == attrName:
+      return attr
+  return nilElementValue
