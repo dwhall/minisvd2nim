@@ -88,7 +88,7 @@ import somedevice/[periph, spi, etc]
 # read the register (v is a distinct type)
 var v = PERIPH.REG
 
-# ERROR: you cannot modify the distinct type with normal integers
+# ERRORS: you cannot modify the distinct type with signed or unsigned integers
 v = v + 1
 v = v + 1'u32
 
@@ -105,14 +105,15 @@ PERIPH.REG = v
 PERIPH.REG = w
 
 # read a field from the register (f is a distinct type)
-# the field is right-shifted to occupy bit 0, up to the field's width
+# the field value is right-shifted if necessary to occupy bit 0, up to the field's width
 var f = PERIPH.REG.FIELD1
 
-# ERROR cannot modify the distinct type with normal integers
+# ERRORS: you cannot modify the distinct type with signed or unsigned integers
+f = f + 1
 f = f + 1'u32
 
 # read the field as a uint32
-# the field is right-shifted to occupy bit 0,
+# the field value is right-shifted if necessary to occupy bit 0,
 # up to the field's width
 var g = PERIPH.REG.FIELD1.uint32
 
@@ -120,13 +121,13 @@ var g = PERIPH.REG.FIELD1.uint32
 g = g + 1'u32
 
 # ERROR this is a compile-time error (for now).
-# I'd like to make this work, but right now
-# it would have an unexpected read.
+# I'd like to make this work, but the way the code is now,
+# there would be an unexpected read.
 PERIPH.REG.FIELD1 = g
 
 # read-modify-write one field in the register.
 # the uint32 value given in parentheses (42'u32) will be
-# left-shifted to the field's offset.
+# left-shifted to the field's offset if necessary.
 # The register's other bits are not affected.
 PERIPH.REG.FIELD1(42'u32).write()
 
@@ -135,17 +136,17 @@ PERIPH.REG.FIELD1(42'u32)
 
 # read-modify-write more than one field in the register.
 # the uint32 value given in parentheses will be
-# left-shifted to the field's offset
+# left-shifted to the field's offset if necessary
 PERIPH.REG
       .FIELD1(g)
       .FIELD2(42'u32)
       .write()
 
 # If the SVD file has enums declared for the registers' fields,
-# the enum symbols may be used to set the field value:
+# the enum symbols (VAL1 in this example) may be used to set the field value:
 PERIPH.REG.FIELD1(VAL1).write()
 
-# or you may use the enums' value to compare against the register's value:
+# you may also use the enums to compare against the register's value:
 if PERIPH.REG.FIELD1 == VAL1:
   # do something
   discard

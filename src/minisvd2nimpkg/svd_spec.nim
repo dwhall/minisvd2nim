@@ -190,7 +190,7 @@ const
     ],
   )
 
-  svdDeviceSpec* = SvdElementSpec(
+  svdDeviceSpec = SvdElementSpec(
     name: "device",
     dataType: svdElement,
     occurance: exactlyOne,

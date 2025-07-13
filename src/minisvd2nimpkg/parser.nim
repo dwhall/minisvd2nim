@@ -57,4 +57,5 @@ func parseSvdElement*(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
 proc parseSvdFile*(fn: Path): SvdElementValue =
   let xml = loadXml(fn.string)
   assert xml.tag == "device"
+  let svdDeviceSpec = getSpec("device")
   result = parseSvdElement(xml, svdDeviceSpec)
