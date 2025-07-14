@@ -7,27 +7,31 @@
 ##    https://open-cmsis-pack.github.io/svd-spec/main/svd_Format_pg.html
 ##
 
-import std/[paths, strformat, xmlparser, xmltree]
+import std/[paths, strformat, tables, xmlparser, xmltree]
 
 import svdtypes, svd_spec
 
-func addIfNotNil(elVals: var seq[SvdElementValue], el: SvdElementValue) =
+func addIfNotNil(elVals: var OrderedTable[string, SvdElementValue], el: SvdElementValue) =
   if el != nilElementValue:
-    elVals.add(el)
+    elVals[el.name] = el
+
+func addByNameIfNotNil(elVals: var OrderedTable[string, SvdElementValue], el: SvdElementValue) =
+  if el != nilElementValue:
+    let nameEl = el.getElement("name")
+    if nameEl != nilElementValue:
+      elVals[nameEl.value] = el
 
 func parseSvdAttributes(
     xml: XmlNode, specAttributes: seq[SvdAttributeSpec]
-): seq[SvdElementValue] =
+): OrderedTable[string, SvdElementValue] =
   for attrSpec in specAttributes:
     let attrVal = xml.attr(attrSpec.name)
     if attrSpec.isRequired and attrVal == "":
       discard # Log: required attribute is missing
     else:
       if attrVal != "":
-        result.add(
-          SvdElementValue(
-            name: attrSpec.name, value: attrVal, dataType: attrSpec.dataType
-          )
+        result[attrSpec.name] = SvdElementValue(
+          name: attrSpec.name, value: attrVal, dataType: attrSpec.dataType
         )
 
 func parseSvdElement*(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
@@ -45,7 +49,7 @@ func parseSvdElement*(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
     if elSpec.isPossiblyMoreThanOne:
       for el in xml.findAll(elSpec.name):
         let elVal = parseSvdElement(el, elSpec)
-        result.elements.addIfNotNil(elVal)
+        result.elements.addByNameIfNotNil(elVal)
     else:
       let el = xml.child(elSpec.name)
       if elSpec.isRequired and el.isNil:
@@ -55,7 +59,7 @@ func parseSvdElement*(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
         result.elements.addIfNotNil(elVal)
 
 proc parseSvdFile*(fn: Path): SvdElementValue =
+  const svdDeviceSpec = getSpec("device")
   let xml = loadXml(fn.string)
   assert xml.tag == "device"
-  let svdDeviceSpec = getSpec("device")
   result = parseSvdElement(xml, svdDeviceSpec)

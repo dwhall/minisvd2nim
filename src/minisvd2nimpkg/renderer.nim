@@ -25,7 +25,7 @@
 ## or added to a project as a dependency in source form.
 ##
 
-import std/[algorithm, dirs, files, os, paths, sequtils, strformat, strutils]
+import std/[algorithm, dirs, files, os, paths, sequtils, strformat, strutils, tables]
 
 import svdtypes
 import versions
@@ -42,7 +42,7 @@ using
   access: SvdAccess
 
 const importMetaGenerator =
-  """# To understand how to use the output of the declarations below, visit:
+  """# To learn how to use the output of the declarations below, visit:
 # https://github.com/dwhall/minisvd2nim/blob/main/README.md#how-to-access-the-device
 
 import minisvd2nimpkg/metagenerator
@@ -188,7 +188,7 @@ proc renderPeripherals(devicePath, device) =
   ## Write enumerated peripherals to a common module
   ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
   var outf: File
-  for p in device.getElement("peripherals").elements:
+  for k, p in device.getElement("peripherals").elements.pairs:
     assert p.name == "peripheral"
     let lowerPeriphName = getPeripheralBaseName(p).toLower
     let periphModule = devicePath / Path(lowerPeriphName).addFileExt("nim")
@@ -217,10 +217,10 @@ proc renderPeripheral(outf, device, peripheral) =
   outf.write(
     &"declarePeripheral(peripheralName = {peripheralName}, baseAddress = {baseAddress}'u32, peripheralDesc = \"{description}\")\p"
   )
-  for irq in peripheral.elements.filterIt(it.name == "interrupt"):
+  for _, irq in peripheral.getElement("interrupts").elements.pairs:
     renderInterrupt(outf, device, peripheral, irq)
-  for r in peripheral.getElement("registers").elements:
-    renderRegister(outf, device, peripheral, r)
+  for _, reg in peripheral.getElement("registers").elements.pairs:
+    renderRegister(outf, device, peripheral, reg)
 
 proc renderInterrupt(outf, device, peripheral, interrupt) =
   let peripheralName = peripheral.getElement("name").value
@@ -244,7 +244,7 @@ proc renderRegister(outf, device, peripheral, register) =
     else:
       &"declareRegister(peripheralName = {peripheralName}, registerName = {registerName}, addressOffset = {addressOffset}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\")\p"
   outf.write(declaration)
-  for f in register.getElement("fields").elements:
+  for _, f in register.getElement("fields").elements.pairs:
     renderField(outf, device, peripheral, register, f)
 
 proc renderField(outf, device, peripheral, register, field) =
@@ -263,7 +263,6 @@ proc renderField(outf, device, peripheral, register, field) =
     outf.write(
       &"declareFieldEnum(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffset}, bitWidth = {bitWidth}):\p"
     )
-    for enumElement in enumElements:
-      let enumName = enumElement.getElement("name").value
+    for name, enumElement in enumElements.pairs:
       let enumValue = enumElement.getElement("value").value
-      outf.write(&"  {enumName} = {enumValue}\p")
+      outf.write(&"  {name} = {enumValue}\p")

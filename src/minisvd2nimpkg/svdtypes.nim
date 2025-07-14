@@ -1,6 +1,6 @@
 ## Copyright 2024 Dean Hall, all rights reserved.  See LICENSE.txt for details.
 ##
-import std/[sequtils, strutils]
+import std/[strutils, tables]
 
 type
   # TODO: Use parseEnum[SvdEndianness] from std/strutils
@@ -88,33 +88,28 @@ type
     name*: string
     value*: string
     dataType*: SvdElementType
-    attributes*: seq[SvdElementValue]
-    elements*: seq[SvdElementValue]
+    attributes*: OrderedTable[string, SvdElementValue]
+    elements*: OrderedTable[string, SvdElementValue]
 
 const nilElementValue* = SvdElementValue()
 
 func `==`*(a, b: SvdElementValue): bool =
   ## Compare two SvdElementValues for equality.
   ## The comparison is incomplete but suitable for now;
-  ## the .attributes and .elements sequences are not compared.
+  ## the .attributes and .elements containers are not compared.
   return a.name == b.name and a.value == b.value and a.dataType == b.dataType
 
 func hasAttr*(elVal: SvdElementValue, attrName: string): bool =
   ## Returns true if the named attribute exists in the element's attributes.
-  elVal.attributes.anyIt(it.name == attrName)
+  attrName in elVal.attributes
 
 func getAttr*(elVal: SvdElementValue, attrName: string): SvdElementValue =
   ## Returns the named attribute value or nilElementValue if not found.
-  for attr in elVal.attributes:
-    if attr.name == attrName:
-      return attr
-  return nilElementValue
+  elVal.attributes.getOrDefault(attrName, nilElementValue)
 
 func getElement*(elVal: SvdElementValue, name: string): SvdElementValue =
   ## Returns the named element value or nilElementValue if not found.
-  for el in elVal.elements:
-    if el.name == name:
-      return el
+  elVal.elements.getOrDefault(name, nilElementValue)
 
 func getAccess*(elVal: SvdElementValue): SvdAccess =
   ## Returns the access type of the element.

@@ -47,7 +47,7 @@ suite "Test the renderer on a big SVD file.":
       check fileExists(devicePath / Path(periph & ".nim"))
 
   test "the renderer SHOULD NOT output non-existant peripheral modules":
-    for periph in ["foo", "bar", "baz", "can1", "dma2"]:
+    for periph in ["foo", "bar", "baz"]:
       check not fileExists(devicePath / Path(periph & ".nim"))
 
   test "the renderer SHOULD NOT output enumerated peripheral modules":

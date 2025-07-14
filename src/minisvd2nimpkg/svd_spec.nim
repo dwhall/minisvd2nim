@@ -222,15 +222,7 @@ const
     ]
   )
 
-func getSoloName*(groupName: string): string =
-  const groupToSoloName = {
-    "peripherals": "peripheral",
-    "registers": "register",
-    "fields": "field",
-  }.toTable
-  groupToSoloName[groupName]
-
-func getSpec*(name: string): SvdElementSpec =
+func getSpec*(name: static string): SvdElementSpec =
   const nameToSpec = {
     "cpu": svdCpuSpec,
     "addressBlock": svdAddressBlockSpec,
