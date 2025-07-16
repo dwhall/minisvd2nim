@@ -73,4 +73,50 @@
   <resetValue>0x00000000</resetValue>                             <!-- by default all bits of the registers are initialized to 0 on reset -->
   <resetMask>0xFFFFFFFF</resetMask>                               <!-- by default all 32Bits of the registers are used -->
 
+  <!-- Manually added to test for fields with derivedFrom attribute -->
+  <peripherals>
+    <peripheral>
+      <name>PERIPHX</name>
+      <registers>
+        <register>
+          <name>REGX</name>
+          <displayName>REGX</displayName>
+          <description>some register 1</description>
+          <addressOffset>0x0</addressOffset>
+          <size>0x20</size>
+          <resetValue>0x0000</resetValue>
+          <fields>
+            <field>
+              <name>BYTE0</name>
+              <description>test</description>
+              <bitRange>[7:0]</bitRange>
+              <access>read-write</access>
+            </field>
+            <field derivedFrom="BYTE0">
+              <name>BYTE1</name>
+              <bitRange>[15:8]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>PERIPHY</name>
+      <registers>
+        <register>
+          <name>REGY</name>
+          <displayName>REGY</displayName>
+          <description>some other register 1</description>
+          <addressOffset>0x10</addressOffset>
+          <size>0x20</size>
+          <fields>
+            <field derivedFrom="PERIPHX.REGX.BYTE0">
+            </field>
+            <field derivedFrom="PERIPHX.REGX.BYTE1">
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+  </peripherals>
 </device>

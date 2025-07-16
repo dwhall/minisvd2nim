@@ -25,7 +25,7 @@
 ## or added to a project as a dependency in source form.
 ##
 
-import std/[algorithm, dirs, files, os, paths, sequtils, strformat, strutils, tables]
+import std/[algorithm, dirs, files, os, paths, strformat, strutils, tables]
 
 import svdtypes
 import versions
@@ -217,9 +217,16 @@ proc renderPeripheral(outf, device, peripheral) =
   outf.write(
     &"declarePeripheral(peripheralName = {peripheralName}, baseAddress = {baseAddress}'u32, peripheralDesc = \"{description}\")\p"
   )
-  for _, irq in peripheral.getElement("interrupts").elements.pairs:
-    renderInterrupt(outf, device, peripheral, irq)
-  for _, reg in peripheral.getElement("registers").elements.pairs:
+  for _, el in peripheral.elements.pairs:
+    if el.name == "interrupt":
+      renderInterrupt(outf, device, peripheral, el)
+  let workingPeripheral =
+    if peripheral.hasAttr("derivedFrom"):
+      let parentPeriphName = peripheral.getAttr("derivedFrom").value
+      device.getElement("peripherals").getElement(parentPeriphName)
+    else:
+      peripheral
+  for _, reg in workingPeripheral.getElement("registers").elements.pairs:
     renderRegister(outf, device, peripheral, reg)
 
 proc renderInterrupt(outf, device, peripheral, interrupt) =
@@ -248,6 +255,11 @@ proc renderRegister(outf, device, peripheral, register) =
     renderField(outf, device, peripheral, register, f)
 
 proc renderField(outf, device, peripheral, register, field) =
+  # FIXME: Handle derivedFrom
+  if field.hasAttr("derivedFrom"):
+    stderr.write(
+      &"Warning: field {peripheral.getElement(\"name\").value}.{register.getElement(\"name\").value}.{field.getElement(\"name\").value} has derivedFrom attribute, which is not yet supported.\p"
+    )
   let peripheralName = peripheral.getElement("name").value
   let registerName = register.getElement("name").value
   let fieldName = field.getElement("name").value
