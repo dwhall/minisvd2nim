@@ -61,9 +61,9 @@ proc renderField(outf, device, peripheral, register, field)
 func getPeripheralBaseName(p: SvdElementValue): string
 
 func readAccess(access): bool =
-  access == readWrite or access == readOnly
+  access == readOnly or access == readWrite or access == readWriteOnce
 func writeAccess(access): bool =
-  access == readWrite or access == writeOnly
+  access == writeOnly or access == readWrite or access == readWriteOnce
 
 func removeWhitespace(s: string): string =
   ## Converts all whitespace to a single space
@@ -75,13 +75,13 @@ func getAccess(elements: varargs[ptr SvdElementValue]): SvdAccess =
   ## returns read-write access as default.
   ## The caller MUST order the elements: device, peripheral, register, field
   ## in order for the access to be determined correctly.
-  const unspecifiedDefault = SvdAccess.readWrite
+  const defaultAccess = SvdAccess.readWrite
   let els = elements.reversed()
   for el in els:
     let accessEl = el[].getElement("access")
     if accessEl != nilElementValue:
       return parseEnum[SvdAccess](accessEl.value)
-  return unspecifiedDefault
+  return defaultAccess
 
 proc renderNimPackageFromParsedSvd*(outPath, device) =
   ## Renders the Nim device package at the outPath path.
@@ -213,7 +213,8 @@ func getPeripheralBaseName(p: SvdElementValue): string =
 proc renderPeripheral(outf, device, peripheral) =
   let peripheralName = peripheral.getElement("name").value
   let baseAddress = peripheral.getElement("baseAddress").value
-  let workingPeripheral = if peripheral.hasAttr("derivedFrom"):
+  let workingPeripheral =
+    if peripheral.hasAttr("derivedFrom"):
       let parentPeriphName = peripheral.getAttr("derivedFrom").value
       device.getElement("peripherals").getElement(parentPeriphName)
     else:

@@ -1,6 +1,6 @@
 ## Copyright 2024 Dean Hall, all rights reserved.  See LICENSE.txt for details.
 ##
-import std/[strutils, tables]
+import std/tables
 
 type
   # TODO: Use parseEnum[SvdEndianness] from std/strutils
@@ -110,14 +110,3 @@ func getAttr*(elVal: SvdElementValue, attrName: string): SvdElementValue =
 func getElement*(elVal: SvdElementValue, name: string): SvdElementValue =
   ## Returns the named element value or nilElementValue if not found.
   elVal.elements.getOrDefault(name, nilElementValue)
-
-func getAccess*(elVal: SvdElementValue): SvdAccess =
-  ## Returns the access type of the element.
-  ## If the immediate element does not have an access field,
-  ## returns the device's default
-  let accessStr = elVal.getElement("access").value
-  try:
-    parseEnum[SvdAccess](accessStr)
-  except ValueError:
-    # TODO: device's default access
-    SvdAccess.readWrite
