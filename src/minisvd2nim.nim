@@ -25,7 +25,7 @@ Options:
 
 proc parseArgs(): tuple[svdFn: Path, outPath: Path]
 proc validateArgs(svdFn: Path, outPath: Path)
-func writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure)
+proc writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure)
 
 proc main() =
   try:
@@ -57,9 +57,10 @@ proc parseArgs(): tuple[svdFn: Path, outPath: Path] =
       break
   return (svdFn, outPath)
 
-func writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure) =
+proc writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure) =
   outFile.write(msg)
   outFile.flushFile()
+  outFile.close()
   quit(errorCode)
 
 proc validateArgs(svdFn: Path, outPath: Path) =
