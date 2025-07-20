@@ -24,17 +24,19 @@ func parseSvdPeripherals(
   peripherals: var seq[SvdPeripheral],
   peripheralCache: var PeripheralCache,
   registerCache: var RegisterCache,
+  parentAccess: SvdAccess,
 )
 func parseSvdDerivedPeripheral(
-  peripheralNode: XmlNode, basePeripheral: SvdPeripheral
+  peripheralNode: XmlNode, basePeripheral: SvdPeripheral, parentAccess: SvdAccess
 ): SvdPeripheral
 func parseSvdDistinctPeripheral(
-  peripheralNode: XmlNode, registerCache: var RegisterCache
+  peripheralNode: XmlNode, registerCache: var RegisterCache, parentAccess: SvdAccess
 ): SvdPeripheral
 func parseSvdPeripheral(
   peripheralNode: XmlNode,
   peripheralCache: var PeripheralCache,
   registerCache: var RegisterCache,
+  parentAccess: SvdAccess,
 ): SvdPeripheral
 func parseSvdInterrupts(peripheralNode: XmlNode, interrupts: var seq[SvdInterrupt])
 func parseSvdInterrupt(interruptNode: XmlNode): SvdInterrupt
@@ -43,19 +45,25 @@ func parseSvdRegisters(
   registersNode: XmlNode,
   registers: var seq[SvdRegister],
   registerCache: var RegisterCache,
+  parentAccess: SvdAccess,
 )
 func parseSvdRegister(
-  registerNode: XmlNode, registerCache: var RegisterCache
+  registerNode: XmlNode, registerCache: var RegisterCache, parentAccess: SvdAccess
 ): SvdRegister
-func parseSvdDistinctRegister(registerNode: XmlNode): SvdRegister
+func parseSvdDistinctRegister(
+  registerNode: XmlNode, parentAccess: SvdAccess
+): SvdRegister
 func parseSvdDerivedRegister(
-  registerNode: XmlNode, derivedFrom: SvdRegister
+  registerNode: XmlNode, derivedFrom: SvdRegister, parentAccess: SvdAccess
 ): SvdRegister
-func parseSvdAccess(accessNode: XmlNode): SvdAccess
-func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField])
+func parseSvdAccess(accessNode: XmlNode, parentAccess: SvdAccess): SvdAccess
+func parseSvdFields(
+  fieldsNode: XmlNode, fields: var seq[SvdRegField], parentAccess: SvdAccess
+)
 func parseSvdFieldEnum(enumValsNode: XmlNode, enumeratedValues: var SvdFieldEnum)
+func parseSvdFieldUsage(usageNode: XmlNode): SvdFieldUsage
 func parseSvdEnumValue(enumValNode: XmlNode): SvdEnumVal
-func parseSvdField(fieldNode: XmlNode): SvdRegField
+func parseSvdField(fieldNode: XmlNode, parentAccess: SvdAccess): SvdRegField
 func parseSvdFieldBitRange(fieldNode: XmlNode, regField: var SvdRegField)
 func parseAnyInt(s: string): int
 func parseBinaryInt(s: string): int
@@ -82,11 +90,14 @@ func parseSvdDevice(
   result.resetValue = parseHexInt(deviceNode.child("resetValue").innerText).uint32
   result.resetMask = parseHexInt(deviceNode.child("resetMask").innerText).uint32
   result.cpu = parseSvdCpu(deviceNode.child("cpu"))
+  result.access = parseSvdAccess(deviceNode.child("access"), SvdAccess.unspecified)
   parseSvdPeripherals(
-    deviceNode.child("peripherals"), result.peripherals, peripheralCache, registerCache
+    deviceNode.child("peripherals"),
+    result.peripherals,
+    peripheralCache,
+    registerCache,
+    result.access,
   )
-  let accessNode = deviceNode.child("access")
-  result.access = parseSvdAccess(accessNode)
 
 func parseSvdCpu(cpuNode: XmlNode): ref SvdCpu =
   if isNil(cpuNode):
@@ -106,32 +117,38 @@ func parseSvdPeripherals(
     peripherals: var seq[SvdPeripheral],
     peripheralCache: var PeripheralCache,
     registerCache: var RegisterCache,
+    parentAccess: SvdAccess,
 ) =
   if isNil(peripheralsNode):
     return
   for pnode in peripheralsNode.findAll("peripheral"):
-    peripherals.add(parseSvdPeripheral(pnode, peripheralCache, registerCache))
+    peripherals.add(
+      parseSvdPeripheral(pnode, peripheralCache, registerCache, parentAccess)
+    )
 
 func parseSvdPeripheral(
     peripheralNode: XmlNode,
     peripheralCache: var PeripheralCache,
     registerCache: var RegisterCache,
+    parentAccess: SvdAccess,
 ): SvdPeripheral =
   let pattrs = peripheralNode.attrs()
   if not isNil(pattrs) and "derivedFrom" in pattrs:
     let basePeripheral = peripheralCache[pattrs["derivedFrom"]]
-    result = parseSvdDerivedPeripheral(peripheralNode, basePeripheral)
+    result = parseSvdDerivedPeripheral(peripheralNode, basePeripheral, parentAccess)
   else:
-    result = parseSvdDistinctPeripheral(peripheralNode, registerCache)
+    result = parseSvdDistinctPeripheral(peripheralNode, registerCache, parentAccess)
     peripheralCache[result.name] = result
       # TODO: determine if derivedFrom can apply to an already-derived peripheral.  If so, unindent so derived peripherals go into the cache.
 
 func parseSvdDerivedPeripheral(
-    peripheralNode: XmlNode, basePeripheral: SvdPeripheral
+    peripheralNode: XmlNode, basePeripheral: SvdPeripheral, parentAccess: SvdAccess
 ): SvdPeripheral =
   result = basePeripheral # copy
   # The name and baseAddress fields MUST be differentiated from the base peripheral
   result.name = peripheralNode.child("name").innerText
+  if result.access == SvdAccess.unspecified:
+    result.access = parseSvdAccess(peripheralNode.child("access"), parentAccess)
   result.baseAddress = parseAnyInt(peripheralNode.child("baseAddress").innerText).uint32
   # The following fields are optionally differentiated from the base peripheral
   let descNode = peripheralNode.child("description")
@@ -146,9 +163,10 @@ func parseSvdDerivedPeripheral(
   # Do not differentiate registers (that's the whole reason for SVD's "derivedFrom" peripherals)
 
 func parseSvdDistinctPeripheral(
-    peripheralNode: XmlNode, registerCache: var RegisterCache
+    peripheralNode: XmlNode, registerCache: var RegisterCache, parentAccess: SvdAccess
 ): SvdPeripheral =
   result.name = peripheralNode.child("name").innerText
+  result.access = parseSvdAccess(peripheralNode.child("access"), parentAccess)
   result.baseAddress = parseAnyInt(peripheralNode.child("baseAddress").innerText).uint32
   let descNode = peripheralNode.child("description")
   if not isNil(descNode):
@@ -157,7 +175,7 @@ func parseSvdDistinctPeripheral(
   let addressBlockNode = peripheralNode.child("addressBlock")
   result.addressBlock = parseSvdAddressBlock(addressBlockNode)
   let registersNode = peripheralNode.child("registers")
-  parseSvdRegisters(registersNode, result.registers, registerCache)
+  parseSvdRegisters(registersNode, result.registers, registerCache, parentAccess)
 
 func parseSvdInterrupts(peripheralNode: XmlNode, interrupts: var seq[SvdInterrupt]) =
   for irqNode in peripheralNode.findAll("interrupt"):
@@ -178,7 +196,9 @@ func parseSvdAddressBlock(addressBlockNode: XmlNode): ref SvdAddressBlock =
   result.size = parseAnyInt(addressBlockNode.child("size").innerText)
   result.usage = addressBlockNode.child("usage").innerText
 
-iterator parseSvdRegisterGroup(registerNode: XmlNode, reg: SvdRegister): SvdRegister =
+iterator parseSvdRegisterGroup(
+    registerNode: XmlNode, reg: SvdRegister, parentAccess: SvdAccess
+): SvdRegister =
   assert len(reg.name) > len("[%s]")
   let dim = registerNode.child("dim")
   let dimIncrement = registerNode.child("dimIncrement")
@@ -194,6 +214,7 @@ iterator parseSvdRegisterGroup(registerNode: XmlNode, reg: SvdRegister): SvdRegi
       r.name = fmt"{regRootName}{nameIndex}"
       inc nameIndex
       r.addressOffset = reg.addressOffset + offset
+      r.access = parseSvdAccess(nil, parentAccess)
       offset += dimIncrementVal
       yield r
 
@@ -201,42 +222,47 @@ func parseSvdRegisters(
     registersNode: XmlNode,
     registers: var seq[SvdRegister],
     registerCache: var RegisterCache,
+    parentAccess: SvdAccess,
 ) =
   if isNil(registersNode):
     return
   for rnode in registersNode.findAll("register"):
-    let reg = parseSvdRegister(rnode, registerCache)
+    let reg = parseSvdRegister(rnode, registerCache, parentAccess)
     if reg.name.endsWith("[%s]"):
-      for r in parseSvdRegisterGroup(rnode, reg):
+      for r in parseSvdRegisterGroup(rnode, reg, parentAccess):
         registers.add(r)
     else:
       registers.add(reg)
 
 func parseSvdRegister(
-    registerNode: XmlNode, registerCache: var RegisterCache
+    registerNode: XmlNode, registerCache: var RegisterCache, parentAccess: SvdAccess
 ): SvdRegister =
   let pattrs = registerNode.attrs()
   if not isNil(pattrs) and "derivedFrom" in pattrs:
     let derivedFrom = registerCache[pattrs["derivedFrom"]]
-    result = parseSvdDerivedRegister(registerNode, derivedFrom)
+    result = parseSvdDerivedRegister(registerNode, derivedFrom, parentAccess)
   else:
-    result = parseSvdDistinctRegister(registerNode)
+    result = parseSvdDistinctRegister(registerNode, parentAccess)
     registerCache[result.name] = result
       # TODO: determine if derivedFrom can apply to an already-derived peripheral.  If so, unindent so derived registers go into the cache.
 
 func parseSvdDerivedRegister(
-    registerNode: XmlNode, derivedFrom: SvdRegister
+    registerNode: XmlNode, derivedFrom: SvdRegister, parentAccess: SvdAccess
 ): SvdRegister =
   result = derivedFrom # copy
   result.derivedFrom = derivedFrom.name
+  if result.access == SvdAccess.unspecified:
+    result.access = parseSvdAccess(registerNode.child("access"), parentAccess)
   # The name, baseAddress and fields MUST be differentiated from the base register
   result.name = registerNode.child("name").innerText
   result.addressOffset = parseAnyInt(registerNode.child("addressOffset").innerText)
   let fieldsNode = registerNode.child("fields")
-  parseSvdFields(fieldsNode, result.fields)
+  parseSvdFields(fieldsNode, result.fields, result.access)
   # TODO: The following fields are optionally differentiated from the base register
 
-func parseSvdDistinctRegister(registerNode: XmlNode): SvdRegister =
+func parseSvdDistinctRegister(
+    registerNode: XmlNode, parentAccess: SvdAccess
+): SvdRegister =
   result = SvdRegister()
   result.name = registerNode.child("name").innerText
   result.addressOffset = parseAnyInt(registerNode.child("addressOffset").innerText)
@@ -246,33 +272,34 @@ func parseSvdDistinctRegister(registerNode: XmlNode): SvdRegister =
   let resetValueNode = registerNode.child("resetValue")
   if not isNil(resetValueNode):
     result.resetValue = parseAnyInt(resetValueNode.innerText).uint32
-  result.access = parseSvdAccess(registerNode.child("access"))
+  result.access = parseSvdAccess(registerNode.child("access"), parentAccess)
   let fieldsNode = registerNode.child("fields")
-  parseSvdFields(fieldsNode, result.fields)
+  parseSvdFields(fieldsNode, result.fields, result.access)
 
-func parseSvdAccess(accessNode: XmlNode): SvdAccess =
-  # TODO: change "read-only" to parse-context's device.access
+func parseSvdAccess(accessNode: XmlNode, parentAccess: SvdAccess): SvdAccess =
   if isNil(accessNode):
-    SvdAccess.readWrite
+    parentAccess
   else:
-    case accessNode.innerText
-    of "write-only": SvdAccess.writeOnly
-    of "read-only": SvdAccess.readOnly
-    else: SvdAccess.readWrite
+    try:
+      parseEnum[SvdAccess](accessNode.innerText)
+    except ValueError:
+      SvdAccess.unspecified
 
-func parseSvdFields(fieldsNode: XmlNode, fields: var seq[SvdRegField]) =
+func parseSvdFields(
+    fieldsNode: XmlNode, fields: var seq[SvdRegField], parentAccess: SvdAccess
+) =
   if isNil(fieldsNode):
     return
   for fnode in fieldsNode.findAll("field"):
-    fields.add(parseSvdField(fnode))
+    fields.add(parseSvdField(fnode, parentAccess))
 
-func parseSvdField(fieldNode: XmlNode): SvdRegField =
+func parseSvdField(fieldNode: XmlNode, parentAccess: SvdAccess): SvdRegField =
   result.name = fieldNode.child("name").innerText
   let descriptionNode = fieldNode.child("description")
   if not isNil(descriptionNode):
     result.description = removeWhitespace(descriptionNode.innerText)
   parseSvdFieldBitRange(fieldNode, result)
-  result.access = parseSvdAccess(fieldNode.child("access"))
+  result.access = parseSvdAccess(fieldNode.child("access"), parentAccess)
   let enumNode = fieldNode.child("enumeratedValues")
   parseSvdFieldEnum(enumNode, result.enumeratedValues)
 
@@ -303,9 +330,18 @@ func parseSvdFieldEnum(enumValsNode: XmlNode, enumeratedValues: var SvdFieldEnum
   let name = enumValsNode.child("name")
   if not isNil(name):
     enumeratedValues.name = name.innerText
-  enumeratedValues.access = parseSvdAccess(enumValsNode.child("access"))
+  enumeratedValues.usage = parseSvdFieldUsage(enumValsNode.child("usage"))
   for enode in enumValsNode.findAll("enumeratedValue"):
     enumeratedValues.values.add(parseSvdEnumValue(enode))
+
+func parseSvdFieldUsage(usageNode: XmlNode): SvdFieldUsage =
+  if isNil(usageNode):
+    SvdFieldUsage.unspecified
+  else:
+    try:
+      parseEnum[SvdFieldUsage](usageNode.innerText)
+    except ValueError:
+      SvdFieldUsage.unspecified
 
 func parseSvdEnumValue(enumValNode: XmlNode): SvdEnumVal =
   result.name = enumValNode.child("name").innerText

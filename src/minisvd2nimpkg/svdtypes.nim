@@ -18,9 +18,18 @@ type
     vendorSystickConfig*: bool
 
   SvdAccess* = enum
-    readWrite
-    readOnly
-    writeOnly
+    unspecified
+    readWrite = "readWrite"
+    readOnly = "read-only"
+    writeOnly = "write-only"
+    writeOnce = "writeOnce"
+    readWriteOnce = "readWriteOnce"
+
+  SvdFieldUsage* = enum
+    unspecified
+    read = "read"
+    write = "write"
+    readWrite = "read-write"
 
   SvdEnumVal* = object of SvdObject
     description*: string
@@ -29,7 +38,7 @@ type
     value*: uint32
 
   SvdFieldEnum* = object of SvdObject
-    access*: SvdAccess = readWrite
+    usage*: SvdFieldUsage = readWrite
     headerEnumName*: string
     values*: seq[SvdEnumVal]
 
@@ -65,6 +74,7 @@ type
     description*: string
     groupName*: string
     baseAddress*: uint32
+    access*: SvdAccess
     interrupt*: seq[SvdInterrupt]
     addressBlock*: ref SvdAddressBlock
     registers*: seq[SvdRegister]

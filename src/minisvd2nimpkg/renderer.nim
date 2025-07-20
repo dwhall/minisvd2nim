@@ -61,9 +61,11 @@ proc renderField(outf, device, peripheral, register, field)
 func getPeripheralBaseName(p: SvdPeripheral): string
 
 func readAccess(access): bool =
-  access == readWrite or access == readOnly
+  access == unspecified or access == readWrite or access == readOnly or
+    access == readWriteOnce
 func writeAccess(access): bool =
-  access == readWrite or access == writeOnly
+  access == unspecified or access == readWrite or access == writeOnly or
+    access == writeOnce or access == readWriteOnce
 
 proc renderNimPackageFromSvd*(outPath, device) =
   ## Renders the Nim device package at the outPath path.
@@ -206,7 +208,7 @@ proc renderRegister(outf, device, peripheral, register) =
 
 proc renderField(outf, device, peripheral, register, field) =
   outf.write(
-    &"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, readAccess = {readAccess(register.access)}, writeAccess = {writeAccess(register.access)}, fieldDesc = \"{field.description}\")\p"
+    &"declareField(peripheralName = {peripheral.name}, registerName = {register.name}, fieldName = {field.name}, bitOffset = {field.bitOffset}, bitWidth = {field.bitWidth}, readAccess = {readAccess(field.access)}, writeAccess = {writeAccess(field.access)}, fieldDesc = \"{field.description}\")\p"
   )
   if field.enumeratedValues.values.len > 0:
     outf.write(
