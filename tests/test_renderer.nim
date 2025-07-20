@@ -72,5 +72,12 @@ suite "Test the renderer on a big SVD file.":
     let modFile = readFile(modPath.string)
     check "declareRegister(peripheralName = DMA1, registerName = LISR" in modFile
 
+  test "the renderer SHOULD not overwrite derivedFrom fields when the current field is empty (regression test)":
+    # CAN2 derives its peripherals from CAN1
+    let modPath = devicePath / Path("can.nim")
+    let modFile = readFile(modPath.string)
+    check "declarePeripheral(peripheralName = CAN2, baseAddress = 0x40006800'u32, peripheralDesc = \"Controller area network\")" in
+      modFile
+
   # Suite teardown
   removeDir(tempPath)

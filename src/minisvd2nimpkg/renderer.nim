@@ -213,19 +213,18 @@ func getPeripheralBaseName(p: SvdElementValue): string =
 proc renderPeripheral(outf, device, peripheral) =
   let peripheralName = peripheral.getElement("name").value
   let baseAddress = peripheral.getElement("baseAddress").value
-  let description = peripheral.getElement("description").value.removeWhitespace()
+  let workingPeripheral = if peripheral.hasAttr("derivedFrom"):
+      let parentPeriphName = peripheral.getAttr("derivedFrom").value
+      device.getElement("peripherals").getElement(parentPeriphName)
+    else:
+      peripheral
+  let description = workingPeripheral.getElement("description").value.removeWhitespace()
   outf.write(
     &"declarePeripheral(peripheralName = {peripheralName}, baseAddress = {baseAddress}'u32, peripheralDesc = \"{description}\")\p"
   )
   for _, el in peripheral.elements.pairs:
     if el.name == "interrupt":
       renderInterrupt(outf, device, peripheral, el)
-  let workingPeripheral =
-    if peripheral.hasAttr("derivedFrom"):
-      let parentPeriphName = peripheral.getAttr("derivedFrom").value
-      device.getElement("peripherals").getElement(parentPeriphName)
-    else:
-      peripheral
   for _, reg in workingPeripheral.getElement("registers").elements.pairs:
     renderRegister(outf, device, peripheral, reg)
 
