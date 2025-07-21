@@ -1,85 +1,116 @@
-import std/[paths, strutils, unittest]
+import std/[paths, sequtils, strutils, tables, unittest, xmlparser, xmltree]
 
-import minisvd2nimpkg/[parser, svdtypes]
+import minisvd2nimpkg/[parser, svd_spec, svdtypes]
 
 let fn_test = getCurrentDir() / Path("tests") / Path("test.svd")
 
-test "there SHALL be a procedure to parse .svd files":
-  check compiles(parseSvdFile(fn_test))
+var unusedPeripheralCache = PeripheralCache()
+var unusedRegisterCache = RegisterCache()
 
-test "the .svd parse procedure SHOULD return an SvdDevice":
-  let obj = parseSvdFile(fn_test)
-  check typeof(obj) is SvdDevice
+test "parseSvdElement SHOULD parse an empty tag":
+  let xml = parseXml("<device></device>")
+  let el =
+    parseSvdElement(xml, svdDeviceSpec, unusedPeripheralCache, unusedRegisterCache)
+  check el.name == "device"
 
-test "the .svd parse procedure SHOULD return an expected value":
-  let device = parseSvdFile(fn_test)
-  check device.name == "ARMCM4"
+test "parseSvdElement SHOULD parse attrs":
+  let xml = parseXml("<device schemaVersion=\"3.14\"></device>")
+  let el =
+    parseSvdElement(xml, svdDeviceSpec, unusedPeripheralCache, unusedRegisterCache)
+  check el.attributes.len == 1
+  check el.attributes[0].name == "schemaVersion"
+  check el.attributes[0].value == "3.14"
 
-let fn_stm32 = getCurrentDir() / Path("tests") / Path("STM32F446_v1_7.svd")
-let device = parseSvdFile(fn_stm32)
+test "parseSvdElement SHOULD parse /device element":
+  let xml =
+    parseXml("<device><vendor>ARM Ltd.</vendor><vendorID>ARM</vendorID></device>")
+  let el =
+    parseSvdElement(xml, svdDeviceSpec, unusedPeripheralCache, unusedRegisterCache)
+  check el.name == "device"
+  check el.elements.len == 2
+  # This test is fragile, the order of elements is not guaranteed
+  check el.elements[0].name == "vendor"
+  check el.elements[1].name == "vendorID"
 
-test "the .svd parse procedure SHOULD return the device name when it is present in the .svd file":
-  check device.name == "STM32F446"
+test "parseSvdElement SHOULD parse /device/cpu element":
+  let xml = parseXml("<device><cpu><name>TestCPU</name></cpu></device>")
+  let el =
+    parseSvdElement(xml, svdDeviceSpec, unusedPeripheralCache, unusedRegisterCache)
+  check el.elements.len == 1
+  check el.elements[0].name == "cpu"
+  check el.elements[0].elements[0].name == "name"
 
-test "the .svd parse procedure SHOULD parse an interrupt":
-  let irqs = device.peripherals[0].interrupt
-  check irqs.len > 0
-  check irqs[0].name == "DCMI"
-  check irqs[0].value == 78
+test "parseSvdElement SHOULD parse peripherals element":
+  let xml = parseXml(
+    """<peripherals>
+      <peripheral>
+        <name>Timer1</name>
+        <version>1.0</version>
+        <description>Timer 1 is a standard timer ... </description>
+        <baseAddress>0x40002000</baseAddress>
+        <addressBlock>skip</addressBlock>
+        <interrupt><name>TIM0_INT</name><value>34</value></interrupt>
+      </peripheral>
+    </peripherals>
+    """
+  )
+  let spec = getSpec("peripherals")
+  let el = parseSvdElement(xml, spec, unusedPeripheralCache, unusedRegisterCache)
+  check el.name == "peripherals"
+  check el.elements.len == 1
+  check el.elements[0].name == "peripheral"
+  let periphFields = el.elements[0].elements
+  check periphFields.len == 6
+  for name in [
+    "name", "version", "description", "baseAddress", "addressBlock", "interrupt"
+  ]:
+    check periphFields.anyIt(it.name == name)
 
-test "the .svd parse procedure SHOULD remove disruptive whitespace from descriptions":
-  # DCMI_CR.ESS
-  let description = device.peripherals[0].registers[0].fields[4].description
-  check description == "Embedded synchronization select"
+test "parseSvdElement SHOULD parse registers":
+  let xml = parseXml(
+    """<registers>
+      <register>
+          <name>TIM_MODEA</name>
+          <description>In mode A this register acts as a reload value</description>
+          <addressOffset>0xC</addressOffset>
+      </register>
+    </registers>
+    """
+  )
+  let spec = getSpec("registers")
+  let el = parseSvdElement(xml, spec, unusedPeripheralCache, unusedRegisterCache)
+  check el.name == "registers"
+  check el.elements.len == 1
+  check el.elements[0].name == "register"
+  let registerFields = el.elements[0].elements
+  check registerFields.len == 3
+  for name in ["name", "description", "addressOffset"]:
+    check registerFields.anyIt(it.name == name)
 
-test "derived peripherals SHOULD overwrite their parent's fields with their own":
-  # The problem was DMA1 was derived from DMA2 and ended up with this:
-  # declareInterrupt(peripheralName = DMA1, interruptName = DMA2_Stream0, interruptValue = 56, interruptDesc = "DMA2 Stream0 global interrupt")
-  for p in device.peripherals:
-    if p.name == "DMA1":
-      for irq in p.interrupt:
-        check irq.name.startsWith("DMA1")
-      break
-
-## example.svd comes from: https://www.keil.com/pack/doc/CMSIS/SVD/html/svd_Example_pg.html
-## and is manually modified for specific tests using examples from:
-## https://open-cmsis-pack.github.io/svd-spec/main/elem_registers.html
-let fn_example = getCurrentDir() / Path("tests") / Path("example.svd")
-let ex = parseSvdFile(fn_example)
-
-test "the .svd parse procedure SHOULD parse register field enumerated values":
-  for p in ex.peripherals:
-    for r in p.registers:
-      for f in r.fields:
-        if p.name == "TIMER0" and r.name == "INT" and f.name == "MODE":
-          check len(f.enumeratedValues.values) == 3
-          check f.enumeratedValues.values[0].name == "Match"
-          check f.enumeratedValues.values[0].value == 0'u32
-
-test "the .svd parse procedure SHOULD be able to parse registers having the derivedFrom attribute":
-  for p in ex.peripherals:
-    for r in p.registers:
-      if p.name == "TIMER1" and r.name == "TimerCtrl1":
-        check r.derivedFrom == "TimerCtrl0"
-        check r.description == "Derived Timer"
-        check r.addressOffset == 4
-
-# FIXME: the following tests depend on rendering
-
-# If you got an error running the unit tests it is because of this.
-# Run the tests again and example.nim should exist because of the block
-# in test_metagenerator.
-# import example
-
-# test "derived peripherals SHOULD have registers identical to the base peripheral":
-#   check compiles TIMER1.COUNT.uint32
-#   check compiles TIMER1.MATCH.uint32
-#   check compiles TIMER2.COUNT.uint32
-#   check compiles TIMER2.MATCH.uint32
-
-# test "derived registers SHOULD have compatible register value types":
-#   # check typeOf(TIMER1.COUNT) is typeOf(TIMER2.COUNT)
-#   discard # TODO: Find a isTypeEquivalent function
-
-# test "derived registers SHOULD have compatible register fields":
-#   discard # TODO
+test "parseSvdElement SHOULD parse fields":
+  let xml = parseXml(
+    """<fields>
+      <field>
+        <name>EN</name>
+        <description>Enable</description>
+        <bitRange>[0:0]</bitRange>
+        <access>read-write</access>
+      </field>
+      <field>
+        <name>RST</name>
+        <description>Reset Timer</description>
+        <bitRange>[1:1]</bitRange>
+        <access>write-only</access>
+      </field>
+    </fields>
+    """
+  )
+  let spec = getSpec("fields")
+  let el = parseSvdElement(xml, spec, unusedPeripheralCache, unusedRegisterCache)
+  check el.name == "fields"
+  check el.elements.len == 2
+  check el.elements[0].name == "field"
+  let fieldFields = el.elements[0].elements
+  check fieldFields.len == 4
+  for name in ["name", "description", "bitRange", "access"]:
+    check fieldFields.anyIt(it.name == name)

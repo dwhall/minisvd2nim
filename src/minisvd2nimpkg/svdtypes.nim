@@ -1,92 +1,87 @@
 ## Copyright 2024 Dean Hall, all rights reserved.  See LICENSE.txt for details.
 ##
-## Types used to hold data parsed from an SVD file.
-## Each SvdObject's field names MUST match the SVD spec
-## in order for the auto-parser to work.
-##
 
 type
-  SvdObject* = object of RootObj
+  # TODO: Use parseEnum[SvdEndianness] from std/strutils
+  SvdEndianness* = enum
+    little
+    big
+    selectable
+    other
+
+  SvdAddrBlockUsage* = enum
+    registers
+    buffer
+    reserved
+
+  SvdModifiedWriteValues* = enum
+    oneToClear
+    oneToSet
+    oneToToggle
+    zeroToClear
+    zeroToSet
+    zeroToToggle
+    clear
+    set
+    modify
+
+  SvdReadAction* = enum
+    clear
+    set
+    modify
+    modifyExternal
+
+  SvdElementType* = enum
+    svdElement
+    svdElementGroup
+    svdInt
+    svdNonNegativeInt
+    svdBool
+    svdFloat
+    svdString
+    svdEndian # one of four strings
+    svdIdentifier # string of an identifier
+    svdRevision # a string of format: rNpM where N,M = [0 - 99]
+    svdAccess
+    svdUsage
+    svdAddressBlock
+    svdAddressBlockUsage
+    svdDimIndexType
+    svdDimArrayIndexType
+    svdProtectionString
+    svdDataType
+    svdModifiedWriteValues
+    svdReadAction
+    svdBitRange
+
+  SvdOccurance* = enum
+    zeroOrMore
+    zeroOrOne
+    zeroOneOrTwo
+    exactlyOne
+    oneOrMore
+
+  SvdAttributeSpec* = object
     name*: string
+    dataType*: SvdElementType
+    occurance*: SvdOccurance
 
-  SvdCpu* = object of SvdObject
-    revision*: string
-    endian*: Endianness
-    mpuPresent*: bool
-    fpuPresent*: bool
-    nvicPrioBits*: int
-    vendorSystickConfig*: bool
+  SvdElementSpec* {.acyclic.} = object
+    name*: string
+    attributes*: seq[SvdAttributeSpec]
+    dataType*: SvdElementType
+    occurance*: SvdOccurance
+    defaultValue*: string
+    elements*: seq[SvdElementSpec]
 
-  SvdAccess* = enum
-    unspecified
-    readWrite = "readWrite"
-    readOnly = "read-only"
-    writeOnly = "write-only"
-    writeOnce = "writeOnce"
-    readWriteOnce = "readWriteOnce"
+  # The parser uses the spec to turn the XML into a tree of SvdElementValues
+  SvdElementValue* = object
+    name*: string
+    value*: string
+    dataType*: SvdElementType
+    attributes*: seq[SvdElementValue]
+    elements*: seq[SvdElementValue]
 
-  SvdFieldUsage* = enum
-    unspecified
-    read = "read"
-    write = "write"
-    readWrite = "read-write"
-
-  SvdEnumVal* = object of SvdObject
-    description*: string
-    # TODO: choice of: value, isDefault
-    isDefault*: bool
-    value*: uint32
-
-  SvdFieldEnum* = object of SvdObject
-    usage*: SvdFieldUsage = readWrite
-    headerEnumName*: string
-    values*: seq[SvdEnumVal]
-
-  SvdRegField* = object of SvdObject
-    description*: string
-    bitOffset*: int
-    bitWidth*: int
-    access*: SvdAccess
-    enumeratedValues*: SvdFieldEnum
-
-  SvdRegister* = object of SvdObject
-    description*: string
-    addressOffset*: int
-    size*: int
-    resetValue*: uint32
-    derivedFrom*: string
-    access*: SvdAccess
-    fields*: seq[SvdRegField]
-    dim: int
-    dimIncrement: int
-    dimIndex: int
-
-  SvdInterrupt* = object of SvdObject
-    description*: string
-    value*: int
-
-  SvdAddressBlock* = object
-    offset*: int
-    size*: int
-    usage*: string
-
-  SvdPeripheral* = object of SvdObject
-    description*: string
-    groupName*: string
-    baseAddress*: uint32
-    access*: SvdAccess
-    interrupt*: seq[SvdInterrupt]
-    addressBlock*: ref SvdAddressBlock
-    registers*: seq[SvdRegister]
-
-  SvdDevice* = object of SvdObject
-    description*: string
-    version*: float
-    addressUnitBits*: int
-    width*: int
-    size*: int
-    resetValue*: uint32
-    resetMask*: uint32
-    cpu*: ref SvdCpu
-    peripherals*: seq[SvdPeripheral]
-    access*: SvdAccess # default access rights for all registers
+func `==`*(a, b: SvdElementValue): bool =
+  ## Compare two SvdElementValues for equality
+  return a.name == b.name and a.value == b.value and a.dataType == b.dataType

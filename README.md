@@ -47,7 +47,7 @@ and manufacturers of ARM based microcontrollers.
 ## Okay, so tell us about minisvd2min
 
 The first reason it is called "mini" is because the codebase is small.
-The parser is under 400 lines of cleanish code.
+The parser is under 70 lines of cleanish code.
 The renderer is under 300 lines of cleanish code.
 The templates and macros are under 300 lines of some mind-bending shit.
 
