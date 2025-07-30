@@ -126,9 +126,9 @@ func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.in
   # Extracts a bitfield from regVal, zero extends it to 32 bits.
   # Returns the field value, down-shifted to no bit offset, as a register-distinct type.
   # Employs the Unsigned Bit Field eXtract instruction, UBFX, when the target supports it.
-  doAssert bitOffset >= 0, "bitOffset must not be negative"
-  doAssert bitWidth > 0, "bitWidth must be greater than zero"
-  doAssert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
+  assert bitOffset >= 0, "bitOffset must not be negative"
+  assert bitWidth > 0, "bitWidth must be greater than zero"
+  assert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
   when ArmArchSupportsAsmInstructions:
     {.emit: ["asm (\"ubfx %0, %1, %2, %3\"\n\t: \"=r\" (", result, ")\n\t: \"r\" (", regVal, "), \"n\" (", bitOffset, "), \"n\" (", bitWidth, "));\n"].}
   else:
@@ -145,9 +145,9 @@ func setField[T](
   # Replaces width bits in regVal starting at the low bit position bitOffset,
   # with bitWidth bits from fieldVal starting at bit[0]. Other bits in regVal are unchanged.
   # Employs the ARMv7 Bit Field Insert instruction, BFI, when the target supports it.
-  doAssert bitOffset >= 0, "bitOffset must not be negative"
-  doAssert bitWidth > 0, "bitWidth must be greater than zero"
-  doAssert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
+  assert bitOffset >= 0, "bitOffset must not be negative"
+  assert bitWidth > 0, "bitWidth must be greater than zero"
+  assert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
   when ArmArchSupportsAsmInstructions:
     result = regVal
     {.emit: ["asm (\"bfi %0, %1, %2, %3\"\n\t: \"+r\" (", result, ")\n\t: \"r\" (", fieldVal, "), \"n\" (", bitOffset, "), \"n\" (", bitWidth, "));\n"].}
