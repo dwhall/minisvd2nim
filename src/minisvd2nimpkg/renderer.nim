@@ -45,7 +45,7 @@ const importMetaGenerator =
   """# To learn how to use the output of the declarations below, visit:
 # https://github.com/dwhall/minisvd2nim/blob/main/README.md#how-to-access-the-device
 
-import minisvd2nimpkg/metagenerator
+import metagenerator
 
 """
 
@@ -83,7 +83,7 @@ func getAccess(elements: varargs[ptr SvdElementValue]): SvdAccess =
       return parseEnum[SvdAccess](accessEl.value)
   return defaultAccess
 
-proc renderNimPackageFromParsedSvd*(outPath, device) =
+proc renderNimPackageFromParsedSvd*(outPath, device): Path =
   ## Renders the Nim device package at the outPath path.
   ## The result is a nimblec-compliant package:
   ##    <outPath>/<device.name.toLower>/
@@ -106,6 +106,7 @@ proc renderNimPackageFromParsedSvd*(outPath, device) =
   renderLicense(devicePath)
   renderDevice(devicePath, device)
   renderPeripherals(devicePath, device)
+  result = devicePath
 
 proc renderPackageFile(devicePath, device) =
   let deviceName = device.getElement("name").value
@@ -153,11 +154,11 @@ proc renderLicense(devicePath) =
   const licenseFileContents =
     """Copyright 2024 Dean Hall
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the Software), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   """
   let licenseFn = devicePath / Path("LICENSE.txt")
   var outf: File

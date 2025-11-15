@@ -17,6 +17,8 @@ requires "nim >= 2.0.0"
 
 # Tasks
 
+proc quoteWrap(s: string): string = "\"" & s & "\""
+
 after build:
   ## Runs minisvd2nim to generate files for use by the example
   when defined(windows):
@@ -26,11 +28,11 @@ after build:
     const tool = "minisvd2nim"
     const dirSep = "/"
   assert fileExists(tool)
-  let currDir = getCurrentDir()
-  let minisvd2nim = currDir & dirSep & tool
-  let exampleDir = currDir & dirSep & "example"
-  let svdFile = currDir & dirSep & "tests" & dirSep & "STM32F446_v1_7.svd"
+  let cwd = getCurrentDir()
+  let minisvd2nim = cwd & dirSep & tool
+  let exampleDir = cwd & dirSep & "example"
+  let svdFile = cwd & dirSep & "tests" & dirSep & "STM32F446_v1_7.svd"
   assert fileExists(svdFile)
   if not dirExists(exampleDir & dirSep & "stm32f446"):
     cd(exampleDir)
-    exec(minisvd2nim & " " & svdFile)
+    exec(quoteWrap(minisvd2nim) & " " & quoteWrap(svdFile))

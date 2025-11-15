@@ -1,3 +1,5 @@
+## Copyright 2024 Dean Hall, all rights reserved.  See LICENSE.txt for details.
+
 #!fmt: off
 
 ## These templates and macros are not used by the minisvd2nim program.

@@ -1,13 +1,15 @@
-import std/[dirs, files, osproc, paths, strutils, tempfiles, unittest]
+import std/[dirs, files, os, osproc, paths, strutils, tempfiles, unittest]
 
 import minisvd2nimpkg/[parser, renderer]
+
+proc quoteWrap(s: string): string = "\"" & s & "\""
 
 suite "Test the renderer.":
   let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_renderer")
   let tempPath = Path(tempDir)
   let fnTest = paths.getCurrentDir() / Path("tests") / Path("test.svd")
   let devTest = parseSvdFile(fnTest)
-  renderNimPackageFromParsedSvd(tempPath, devTest)
+  discard renderNimPackageFromParsedSvd(tempPath, devTest)
   let devicePath = tempPath / Path("ARMCM4".toLower)
 
   test "there SHOULD be a procedure to render nim source":
@@ -39,8 +41,10 @@ suite "Test the renderer on a big SVD file.":
   var tempPath = Path(tempDir)
   let fnStm32 = paths.getCurrentDir() / Path("tests") / Path("STM32F446_v1_7.svd")
   let devStm32 = parseSvdFile(fnStm32)
-  renderNimPackageFromParsedSvd(tempPath, devStm32)
+  discard renderNimPackageFromParsedSvd(tempPath, devStm32)
   let devicePath = tempPath / Path("STM32F446".toLower)
+  let metagenPath = paths.getCurrentDir() / Path("src") / Path("minisvd2nimpkg") / Path("metagenerator.nim")
+  copyFileToDir(metagenPath.string, devicePath.string)
 
   test "the renderer SHOULD output peripheral modules":
     # check the first, last and a few other peripherals
@@ -58,7 +62,8 @@ suite "Test the renderer on a big SVD file.":
   test "the renderer SHOULD generate modules that compile":
     for periph in ["dcmi", "rtc", "can", "sdio"]:
       let modPath = devicePath / Path(periph & ".nim")
-      let (_, exitCode) = execCmdEx("nim c " & modPath.string)
+      let cmd = "nim c " & quoteWrap(modPath.string)
+      let (_, exitCode) = execCmdEx(cmd)
       check exitCode == 0
 
   test "the renderer SHOULD declare a peripheral's interrupts":

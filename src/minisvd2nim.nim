@@ -2,7 +2,7 @@
 ## parses the given .svd input file and outputs nim source to stdout.
 ##
 
-import std/[files, parseopt, paths, strformat, strutils]
+import std/[files, os, parseopt, paths, strformat, strutils, syncio]
 
 import minisvd2nimpkg/[parser, renderer, versions]
 
@@ -26,13 +26,15 @@ Options:
 proc parseArgs(): tuple[svdFn: Path, outPath: Path]
 proc validateArgs(svdFn: Path, outPath: Path)
 proc writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure)
+proc copyMetageneratorFileToPackage(pkgPath: Path)
 
 proc main() =
   try:
     let (svdFn, outPath) = parseArgs()
     validateArgs(svdFn, outPath)
     let svd = parseSvdFile(fn = svdFn)
-    renderNimPackageFromParsedSvd(outPath = outPath, device = svd)
+    let pkgPath = renderNimPackageFromParsedSvd(outPath = outPath, device = svd)
+    copyMetageneratorFileToPackage(pkgPath)
   except IOError as e:
     writeMsgAndQuit(stdout, "Error: " & e.msg & "\n" & usage)
 
@@ -40,7 +42,7 @@ proc parseArgs(): tuple[svdFn: Path, outPath: Path] =
   ## Returns only if a proper combination of arguments are given;
   ## otherwise it prints a message and exits
   var svdFn: Path
-  var outPath = getCurrentDir()
+  var outPath = paths.getCurrentDir()
   for kind, key, val in getopt():
     case kind
     of cmdLongOption, cmdShortOption:
@@ -71,6 +73,14 @@ proc validateArgs(svdFn: Path, outPath: Path) =
   # If the given file cannot be found, quit with error
   if not fileExists(svdFn):
     writeMsgAndQuit(stdout, usage)
+
+proc copyMetageneratorFileToPackage(pkgPath: Path) =
+  const
+    thisSrcFileDir = currentSourcePath().parentDir
+    metageneratorPath = joinPath(thisSrcFileDir, "minisvd2nimpkg", "metagenerator.nim")
+    fileContents = readFile(metageneratorPath.string)
+  let fn = pkgPath / Path("metagenerator.nim")
+  writeFile(fn.string, fileContents)
 
 if isMainModule:
   main()
