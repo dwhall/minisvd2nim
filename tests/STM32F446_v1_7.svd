@@ -16377,6 +16377,27 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
           <size>0x20</size>
           <resetValue>0x00C00000</resetValue>
           <fields>
+            <!-- BEGIN Ficticious field created for testing only -->
+            <field>
+              <name>OVERRUN</name>
+              <description>Overrun error</description>
+              <lsb>0</lsb>
+              <msb>0</msb>
+              <enumeratedValues>
+                <usage>read</usage>
+                <enumeratedValue>
+                  <name>NotPresent</name>
+                  <description>Read: error not present</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>Present</name>
+                  <description>Read: error present</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <!-- END Ficticious field created for testing only -->
             <field>
               <name>LBD</name>
               <description>LIN break detection flag</description>

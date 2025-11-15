@@ -84,5 +84,12 @@ suite "Test the renderer on a big SVD file.":
     check "declarePeripheral(peripheralName = CAN2, baseAddress = 0x40006800'u32, peripheralDesc = \"Controller area network\")" in
       modFile
 
+  test "the renderer SHOULD output field bit ranges when lsb and msb are given":
+    # The SVD file is instrumented to have UART4.SR.OVERRUN with elements lsb = 0, msb = 0
+    let modPath = devicePath / Path("uart.nim")
+    let modFile = readFile(modPath.string)
+    check "declareField(peripheralName = UART4, registerName = SR, fieldName = OVERRUN, bitOffset = 0, bitWidth = 1" in
+      modFile
+
   # Suite teardown
   removeDir(tempPath)

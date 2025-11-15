@@ -255,6 +255,45 @@ proc renderRegister(outf, device, peripheral, register) =
   for _, f in register.getElement("fields").elements.pairs:
     renderField(outf, device, peripheral, register, f)
 
+proc computeFieldBitRange(field: SvdElementValue): tuple[bitOffsetStr: string, bitWidthStr: string] =
+  ## Determine bitOffset and bitWidth from one of the allowed SVD representations:
+  ##  - explicit bitOffset and bitWidth
+  ##  - lsb and msb pair
+  ##  - bitRange (patterns like "lsb:msb" or "[msb:lsb]" etc.)
+  var bitOffsetStr = "0"
+  var bitWidthStr  = "1"
+
+  let bitOffsetEl = field.getElement("bitOffset")
+  let bitWidthEl  = field.getElement("bitWidth")
+  let lsbEl       = field.getElement("lsb")
+  let msbEl       = field.getElement("msb")
+  let bitRangeEl  = field.getElement("bitRange")
+
+  if bitOffsetEl != nilElementValue and bitWidthEl != nilElementValue:
+    bitOffsetStr = bitOffsetEl.value
+    bitWidthStr  = bitWidthEl.value
+  elif lsbEl != nilElementValue and msbEl != nilElementValue:
+    let l = parseInt(lsbEl.value)
+    let m = parseInt(msbEl.value)
+    assert m >= l
+    let offset = l
+    let width  = m - l + 1
+    bitOffsetStr = $offset
+    bitWidthStr  = $width
+  elif bitRangeEl != nilElementValue:
+    var br = bitRangeEl.value.strip()
+    # remove optional surrounding brackets, then split on ':'
+    br = br.replace("[", "").replace("]", "")
+    let parts = br.split(':')
+    assert parts.len == 2
+    let a = parseInt(parts[0].strip())
+    let b = parseInt(parts[1].strip())
+    let offset = if a < b: a else: b
+    let width  = if b >= a: (b - a + 1) else: (a - b + 1)
+    bitOffsetStr = $offset
+    bitWidthStr  = $width
+  return (bitOffsetStr, bitWidthStr)
+
 proc renderField(outf, device, peripheral, register, field) =
   # FIXME: Handle derivedFrom
   if field.hasAttr("derivedFrom"):
@@ -264,8 +303,7 @@ proc renderField(outf, device, peripheral, register, field) =
   let peripheralName = peripheral.getElement("name").value
   let registerName = register.getElement("name").value
   let fieldName = field.getElement("name").value
-  let bitOffset = field.getElement("bitOffset").value
-  let bitWidth = field.getElement("bitWidth").value
+  let (bitOffset, bitWidth) = computeFieldBitRange(field)
   let fieldAccess = getAccess(addr device, addr peripheral, addr register, addr field)
   let description = field.getElement("description").value.removeWhitespace()
   outf.write(
