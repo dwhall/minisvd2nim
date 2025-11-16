@@ -2,7 +2,7 @@
 
 # Package
 
-version       = "0.4.0"
+version       = "0.4.1"
 author        = "!!Dean"
 description   = "A smaller SVD to nim generator tool"
 license       = "MIT"
@@ -13,7 +13,7 @@ bin           = @["minisvd2nim"]
 
 # Dependencies
 
-requires "nim >= 2.0.0"
+requires "nim >= 2.0"
 
 # Tasks
 
