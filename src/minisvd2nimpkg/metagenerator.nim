@@ -37,7 +37,7 @@ template declareDevice*(
 ): untyped =
   # Device details
   const DEVICE* {.inject.} = astToStr(deviceName)
-  const MPU_PRESET* {.inject.} = mpuPresent
+  const MPU_PRESENT* {.inject.} = mpuPresent
   const FPU_PRESENT* {.inject.} = fpuPresent
   const NVIC_PRIO_BITS* {.inject.} = nvicPrioBits
 

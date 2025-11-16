@@ -177,7 +177,7 @@ I update the `metagenerator` module and forget to update this doc)
 ```nim
 # Device details
 const DEVICE* = "STM32F446"
-const MPU_PRESET* = true
+const MPU_PRESENT* = true
 const FPU_PRESENT* = true
 const NVIC_PRIO_BITS* = 4
 ```
