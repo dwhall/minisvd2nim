@@ -253,3 +253,13 @@ func isLeaf*[T: SomeSvdSpec](elSpec: T): bool =
   elSpec.dataType != svdElement and
   elSpec.dataType != svdElementGroup and
   elSpec.dataType != svdAddressBlock
+
+func specElementTypeIsBool*(specName: static string, elName: static string): bool {.compileTime.} =
+  let spec = getSpec(specName)
+  for el in spec.elements:
+    if el.name == elName:
+      if el.dataType == svdBool:
+        return true
+      else:
+        break
+  return false

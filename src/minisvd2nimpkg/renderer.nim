@@ -27,8 +27,7 @@
 
 import std/[algorithm, dirs, files, os, paths, strformat, strutils, tables]
 
-import svdtypes
-import versions
+import svd_spec, svdtypes, versions
 
 using
   device: SvdElementValue
@@ -167,6 +166,14 @@ THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED
     outf.close()
   outf.write(licenseFileContents)
 
+template castElementValue(specName: untyped, elName: string): untyped =
+  ## Cast an element's string value to the type declared by the spec.
+  ## Only bool for now (0/1 or false/true --> Nim bool).
+  when specElementTypeIsBool(astToStr(specName), elName):
+    specName.getElement(elName).value.toLowerAscii in ["true", "1"]
+  else:
+    specName.getElement(elName).value
+
 proc renderDevice(devicePath, device) =
   let fn = devicePath / Path("device.nim")
   var outf: File
@@ -175,9 +182,8 @@ proc renderDevice(devicePath, device) =
     outf.close()
   let deviceName = device.getElement("name").value
   let cpu = device.getElement("cpu")
-  # FIXME?: Failing to check spec for data types.
-  let mpuPresent = cpu.getElement("mpuPresent").value
-  let fpuPresent = cpu.getElement("fpuPresent").value
+  let mpuPresent = castElementValue(cpu, "mpuPresent")
+  let fpuPresent = castElementValue(cpu, "mpuPresent")
   let nvicPrioBits = cpu.getElement("nvicPrioBits").value
   outf.write(
     importMetaGenerator & &"#!fmt: off\n" &
