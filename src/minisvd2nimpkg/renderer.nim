@@ -109,25 +109,24 @@ proc renderNimPackageFromParsedSvd*(outPath, device): Path =
 
 proc renderPackageFile(devicePath, device) =
   let deviceName = device.getElement("name").value
-  let packageFn = devicePath / Path(deviceName.toLower()).addFileExt("nimble")
-  var outf: File
-  assert outf.open(packageFn.string, fmWrite)
-  defer:
-    outf.close()
-  outf.write(
-    &"""
+  let fullVersion = getVersion().strip()
+  let fileContents = &"""
 #!fmt: off
 
-version       = {getVersion().strip()}  # same as minisvd2nim's version
+version       = {fullVersion}  # same as minisvd2nim's version
 author        = "minisvd2nim (generated)"
 description   = "Device and peripheral modules for the {deviceName}."
 license       = "MIT"
 
 requires
-  "minisvd2nim >= 1.0.0"
-  "nim >= 2.0.0"
+  "nim >= 2.0"
 """
-  )
+  var outf: File
+  let packageFn = devicePath / Path(deviceName.toLower()).addFileExt("nimble")
+  assert outf.open(packageFn.string, fmWrite)
+  defer:
+    outf.close()
+  outf.write(fileContents)
 
 proc renderReadme(devicePath, device) =
   let filenameParts = getAppFilename().splitFile()
