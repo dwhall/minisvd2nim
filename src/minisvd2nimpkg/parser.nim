@@ -9,7 +9,7 @@
 
 import std/[paths, strformat, tables, xmlparser, xmltree]
 
-import svdtypes, svd_spec
+import svd_types, svd_spec
 
 func addIfNotNil(elVals: var OrderedTable[string, SvdElementValue], el: SvdElementValue) =
   if el != nilElementValue:

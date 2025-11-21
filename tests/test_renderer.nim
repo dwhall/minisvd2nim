@@ -2,7 +2,8 @@ import std/[dirs, files, os, osproc, paths, strutils, tempfiles, unittest]
 
 import minisvd2nimpkg/[parser, renderer]
 
-proc quoteWrap(s: string): string = "\"" & s & "\""
+proc quoteWrap(s: string): string =
+  "\"" & s & "\""
 
 suite "Test the renderer.":
   let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_renderer")
@@ -43,7 +44,9 @@ suite "Test the renderer on a big SVD file.":
   let devStm32 = parseSvdFile(fnStm32)
   discard renderNimPackageFromParsedSvd(tempPath, devStm32)
   let devicePath = tempPath / Path("STM32F446".toLower)
-  let metagenPath = paths.getCurrentDir() / Path("src") / Path("minisvd2nimpkg") / Path("metagenerator.nim")
+  let metagenPath =
+    paths.getCurrentDir() / Path("src") / Path("minisvd2nimpkg") /
+    Path("metagenerator.nim")
   copyFileToDir(metagenPath.string, devicePath.string)
 
   test "the renderer SHOULD output peripheral modules":

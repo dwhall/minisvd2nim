@@ -7,7 +7,7 @@
 ##
 
 import std/[sequtils, tables]
-import svdtypes
+import svd_types
 
 const
   svdDerivedFromAttrSpec = SvdAttributeSpec(
@@ -242,17 +242,17 @@ func hasAttr*(elSpec: SvdElementSpec, attrName: string): bool =
 
 type SomeSvdSpec = SvdElementSpec | SvdAttributeSpec
 
-func isRequired*[T: SomeSvdSpec](elSpec: T): bool =
+func isRequired*[T: SomeSvdSpec](spec: T): bool =
   ## Is the element or attribute required per the specification?
-  elSpec.occurance == exactlyOne or elSpec.occurance == oneOrMore
+  spec.occurance in {exactlyOne, oneOrMore}
 
-func isPossiblyMoreThanOne*[T: SomeSvdSpec](elSpec: T): bool =
-  elSpec.occurance == oneOrMore or elSpec.occurance == zeroOrMore
+func isPossiblyMoreThanOne*[T: SomeSvdSpec](spec: T): bool =
+  spec.occurance in {oneOrMore, zeroOrMore}
 
-func isLeaf*[T: SomeSvdSpec](elSpec: T): bool =
-  elSpec.dataType != svdElement and
-  elSpec.dataType != svdElementGroup and
-  elSpec.dataType != svdAddressBlock
+func isLeaf*[T: SomeSvdSpec](spec: T): bool =
+  spec.dataType != svdElement and
+  spec.dataType != svdElementGroup and
+  spec.dataType != svdAddressBlock
 
 func specElementTypeIsBool*(specName: static string, elName: static string): bool {.compileTime.} =
   let spec = getSpec(specName)
@@ -263,3 +263,4 @@ func specElementTypeIsBool*(specName: static string, elName: static string): boo
       else:
         break
   return false
+

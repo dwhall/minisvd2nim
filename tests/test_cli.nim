@@ -1,6 +1,7 @@
-import std/[files, os, paths, strutils, unittest]
+import std/[files, os, paths, unittest]
 
-proc quoteWrap(s: string): string = "\"" & s & "\""
+proc quoteWrap(s: string): string =
+  "\"" & s & "\""
 
 # Check that the project has been built
 let exe = when defined(windows): "minisvd2nim.exe" else: "minisvd2nim"
