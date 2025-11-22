@@ -94,5 +94,18 @@ suite "Test the renderer on a big SVD file.":
     check "declareField(peripheralName = UART4, registerName = SR, fieldName = OVERRUN, bitOffset = 0, bitWidth = 1" in
       modFile
 
+  test "the renderer SHOULD output registers from a dim element group":
+    # The SVD file is instrumented to have UART4.DEVICEID[%s] with dim = 0x2, dimIncrement = 0x4
+    let modPath = devicePath / Path("uart.nim")
+    let modFile = readFile(modPath.string)
+    check "declareRegister(peripheralName = UART4, registerName = DEVICEID0, addressOffset = 0x00000060'u32, readAccess = true, writeAccess = false" in
+      modFile
+    check "declareField(peripheralName = UART4, registerName = DEVICEID0, fieldName = DEVICEID, bitOffset = 0, bitWidth = 32, readAccess = true, writeAccess = false" in
+      modFile
+    check "declareRegister(peripheralName = UART4, registerName = DEVICEID1, addressOffset = 0x00000064'u32, readAccess = true, writeAccess = false" in
+      modFile
+    check "declareField(peripheralName = UART4, registerName = DEVICEID1, fieldName = DEVICEID, bitOffset = 0, bitWidth = 32, readAccess = true, writeAccess = false" in
+      modFile
+
   # Suite teardown
   removeDir(tempPath)

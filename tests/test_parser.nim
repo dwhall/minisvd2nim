@@ -137,3 +137,36 @@ test "parseSvdElement SHOULD parse fields":
   let field = el.getElement("RST")
   for elNm in ["name", "description", "bitRange", "access"]:
     check elNm in field.elements
+
+test "parseSvdElement SHOULD parse dim element group":
+  let xml = parseXml(
+    """<register>
+          <dim>0x2</dim>
+          <dimIncrement>0x4</dimIncrement>
+          <name>DEVICEID[%s]</name>
+          <description>Description collection: Device identifier</description>
+          <addressOffset>0x060</addressOffset>
+          <access>read-only</access>
+          <resetValue>0xFFFFFFFF</resetValue>
+          <fields>
+            <field>
+              <name>DEVICEID</name>
+              <description>64 bit unique device identifier</description>
+              <lsb>0</lsb>
+              <msb>31</msb>
+            </field>
+          </fields>
+        </register>
+    """
+  )
+  const spec = getSpec("register")
+  var el = parseSvdElement(xml, spec)
+  check el.name == "register"
+  for fieldNm in ["dim", "dimIncrement", "name"]:
+    check fieldNm in el.elements
+  let dimEl = el.getElement("dim")
+  check dimEl.value == "0x2"
+  let dimIncEl = el.getElement("dimIncrement")
+  check dimIncEl.value == "0x4"
+  let nameEl = el.getElement("name")
+  check nameEl.value == "DEVICEID[%s]"

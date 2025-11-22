@@ -27,7 +27,7 @@
 
 import std/[algorithm, dirs, files, os, paths, strformat, strutils, tables]
 
-import svd_spec, svd_types, versions
+import svd_spec, svd_types, utils, versions
 
 using
   device: SvdElementValue
@@ -37,6 +37,7 @@ using
   peripheral: SvdElementValue
   interrupt: SvdElementValue
   register: SvdElementValue
+  registerName: string
   field: SvdElementValue
   access: SvdAccess
 
@@ -56,7 +57,7 @@ proc renderPeripherals(devicePath, device)
 proc renderPeripheral(outf, device, peripheral)
 proc renderInterrupt(outf, device, peripheral, interrupt)
 proc renderRegister(outf, device, peripheral, register)
-proc renderField(outf, device, peripheral, register, field)
+proc renderField(outf, device, peripheral, registerName, register, field)
 func getPeripheralBaseName(p: SvdElementValue): string
 
 func readAccess(access): bool =
@@ -245,20 +246,34 @@ proc renderInterrupt(outf, device, peripheral, interrupt) =
   )
 
 proc renderRegister(outf, device, peripheral, register) =
+  let isDimensioned = register.getElement("dim") != nilElementValue and
+    register.getElement("dimIncrement") != nilElementValue
   let peripheralName = peripheral.getElement("name").value
   let registerName = register.getElement("name").value
   let addressOffset = register.getElement("addressOffset").value
   let registerAccess = getAccess(addr device, addr peripheral, addr register)
   let description = register.getElement("description").value.removeWhitespace()
   let derivedFrom = register.getAttr("derivedFrom").value
-  let declaration =
-    if register.hasAttr("derivedFrom"):
-      &"declareRegister(peripheralName = {peripheralName}, registerName = {registerName}, addressOffset = {addressOffset}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\", derivedFrom = {derivedFrom})\p"
-    else:
-      &"declareRegister(peripheralName = {peripheralName}, registerName = {registerName}, addressOffset = {addressOffset}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\")\p"
-  outf.write(declaration)
-  for _, f in register.getElement("fields").elements.pairs:
-    renderField(outf, device, peripheral, register, f)
+  let derivedFromSnippet = if register.hasAttr("derivedFrom"): &", derivedFrom = {derivedFrom}" else: ""
+  if isDimensioned:
+    let dim = parseAnyInt(register.getElement("dim").value)
+    let dimIncrement = parseAnyInt(register.getElement("dimIncrement").value)
+    var addressOffsetVal = parseAnyInt(addressOffset)
+    var regNameFmt = registerName.replace("[%s]", "$1")
+    for i in 0 ..< dim:
+      let regName = `%`(regNameFmt, $i)
+      outf.write(
+        &"declareRegister(peripheralName = {peripheralName}, registerName = {regName}, addressOffset = 0x{addressOffsetVal.toHex}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"
+      )
+      for _, field in register.getElement("fields").elements.pairs:
+        renderField(outf, device, peripheral, regName, register, field)
+      addressOffsetVal += dimIncrement
+  else:
+    outf.write(
+      &"declareRegister(peripheralName = {peripheralName}, registerName = {registerName}, addressOffset = {addressOffset}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"
+    )
+    for _, field in register.getElement("fields").elements.pairs:
+      renderField(outf, device, peripheral, registerName, register, field)
 
 proc computeFieldBitRange(
     field: SvdElementValue
@@ -305,14 +320,13 @@ proc computeFieldBitRange(
     bitWidthStr = $width
   return (bitOffsetStr, bitWidthStr)
 
-proc renderField(outf, device, peripheral, register, field) =
+proc renderField(outf, device, peripheral, registerName, register, field) =
   # FIXME: Handle derivedFrom
   if field.hasAttr("derivedFrom"):
     stderr.write(
       &"Warning: field {peripheral.getElement(\"name\").value}.{register.getElement(\"name\").value}.{field.getElement(\"name\").value} has derivedFrom attribute, which is not yet supported.\p"
     )
   let peripheralName = peripheral.getElement("name").value
-  let registerName = register.getElement("name").value
   let fieldName = field.getElement("name").value
   let (bitOffset, bitWidth) = computeFieldBitRange(field)
   let fieldAccess = getAccess(addr device, addr peripheral, addr register, addr field)

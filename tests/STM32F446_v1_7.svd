@@ -16369,6 +16369,25 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
         <value>52</value>
       </interrupt>
       <registers>
+        <!-- BEGIN Ficticious register created for testing only -->
+        <register>
+          <dim>0x2</dim>
+          <dimIncrement>0x4</dimIncrement>
+          <name>DEVICEID[%s]</name>
+          <description>Description collection: Device identifier</description>
+          <addressOffset>0x060</addressOffset>
+          <access>read-only</access>
+          <resetValue>0xFFFFFFFF</resetValue>
+          <fields>
+            <field>
+              <name>DEVICEID</name>
+              <description>64 bit unique device identifier</description>
+              <lsb>0</lsb>
+              <msb>31</msb>
+            </field>
+          </fields>
+        </register>
+        <!-- END Ficticious register created for testing only -->
         <register>
           <name>SR</name>
           <displayName>SR</displayName>
