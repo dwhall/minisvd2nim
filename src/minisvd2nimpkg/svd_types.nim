@@ -90,6 +90,7 @@ type
     dataType*: SvdElementType
     attributes*: OrderedTable[string, SvdElementValue]
     elements*: OrderedTable[string, SvdElementValue]
+    isSeggerVariant*: bool
 
 const nilElementValue* = SvdElementValue()
 

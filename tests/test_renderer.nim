@@ -9,12 +9,12 @@ suite "Test the renderer.":
   let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_renderer")
   let tempPath = Path(tempDir)
   let fnTest = paths.getCurrentDir() / Path("tests") / Path("test.svd")
-  let devTest = parseSvdFile(fnTest)
-  discard renderNimPackageFromParsedSvd(tempPath, devTest)
+  let (device, deviceName) = parseSvdFile(fnTest)
+  discard renderNimPackageFromParsedSvd(tempPath, device, deviceName)
   let devicePath = tempPath / Path("ARMCM4".toLower)
 
   test "there SHOULD be a procedure to render nim source":
-    check compiles(renderNimPackageFromParsedSvd(tempPath, devTest))
+    check compiles(renderNimPackageFromParsedSvd(tempPath, device, deviceName))
 
   test "the renderer SHOULD output a package README":
     check fileExists(devicePath / Path("README.txt"))
@@ -41,8 +41,8 @@ suite "Test the renderer on a big SVD file.":
   let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_renderer")
   var tempPath = Path(tempDir)
   let fnStm32 = paths.getCurrentDir() / Path("tests") / Path("STM32F446_v1_7.svd")
-  let devStm32 = parseSvdFile(fnStm32)
-  discard renderNimPackageFromParsedSvd(tempPath, devStm32)
+  let (device, deviceName) = parseSvdFile(fnStm32)
+  discard renderNimPackageFromParsedSvd(tempPath, device, deviceName)
   let devicePath = tempPath / Path("STM32F446".toLower)
   let metagenPath =
     paths.getCurrentDir() / Path("src") / Path("minisvd2nimpkg") /

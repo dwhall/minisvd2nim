@@ -19,30 +19,35 @@ Usage:
   {usage}
 Options:
   -p / --path=<path>    set the path where the device package is written
-  --version             show the version
+  -s / --segger         parse Segger non-compliant .svd-like format
+  -v / --version        show the version
   --help                show this help
 """
 
-proc parseArgs(): tuple[svdFn: Path, outPath: Path]
-proc validateArgs(svdFn: Path, outPath: Path)
+proc parseArgs(): tuple[fn: Path, outPath: Path, isSegger: bool]
+proc validateArgs(fn: Path, outPath: Path)
+proc processPeripheralPackage(fn: Path, outPath: Path)
+proc processCpuPackage(fn: Path, outPath: Path)
 proc writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure)
 proc copyMetageneratorFileToPackage(pkgPath: Path)
 
 proc main() =
   try:
-    let (svdFn, outPath) = parseArgs()
-    validateArgs(svdFn, outPath)
-    let svd = parseSvdFile(fn = svdFn)
-    let pkgPath = renderNimPackageFromParsedSvd(outPath = outPath, device = svd)
-    copyMetageneratorFileToPackage(pkgPath)
+    let (fn, outPath, isSegger) = parseArgs()
+    validateArgs(fn, outPath)
+    if isSegger:
+      processCpuPackage(fn, outPath)
+    else:
+      processPeripheralPackage(fn, outPath)
   except IOError as e:
     writeMsgAndQuit(stdout, "Error: " & e.msg & "\n" & usage)
 
-proc parseArgs(): tuple[svdFn: Path, outPath: Path] =
+proc parseArgs(): tuple[fn: Path, outPath: Path, isSegger: bool] =
   ## Returns only if a proper combination of arguments are given;
   ## otherwise it prints a message and exits
-  var svdFn: Path
+  var fn: Path
   var outPath = paths.getCurrentDir()
+  var isSegger = false
   for kind, key, val in getopt():
     case kind
     of cmdLongOption, cmdShortOption:
@@ -51,13 +56,15 @@ proc parseArgs(): tuple[svdFn: Path, outPath: Path] =
         writeMsgAndQuit(stdout, version)
       of "path", "p":
         outPath = absolutePath(Path(val))
+      of "segger", "s":
+        isSegger = true
       else:
         writeMsgAndQuit(stdout, help)
     of cmdArgument:
-      svdFn = absolutePath(Path(key))
+      fn = absolutePath(Path(key))
     of cmdEnd:
       break
-  return (svdFn, outPath)
+  return (fn, outPath, isSegger)
 
 proc writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure) =
   outFile.write(msg)
@@ -65,14 +72,24 @@ proc writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure) =
   outFile.close()
   quit(errorCode)
 
-proc validateArgs(svdFn: Path, outPath: Path) =
+proc validateArgs(fn: Path, outPath: Path) =
   # If no file was given, quit successfully
-  if svdFn.string == "":
+  if fn.string == "":
     writeMsgAndQuit(stdout, usage, QuitSuccess)
 
   # If the given file cannot be found, quit with error
-  if not fileExists(svdFn):
+  if not fileExists(fn):
     writeMsgAndQuit(stdout, usage)
+
+proc processCpuPackage(fn: Path, outPath: Path) =
+  let (device, deviceName) = parseSeggerFile(fn)
+  let pkgPath = renderNimPackageFromParsedSvd(outPath, device, deviceName)
+  copyMetageneratorFileToPackage(pkgPath)
+
+proc processPeripheralPackage(fn: Path, outPath: Path) =
+  let (device, deviceName) = parseSvdFile(fn)
+  let pkgPath = renderNimPackageFromParsedSvd(outPath, device, deviceName)
+  copyMetageneratorFileToPackage(pkgPath)
 
 proc copyMetageneratorFileToPackage(pkgPath: Path) =
   const

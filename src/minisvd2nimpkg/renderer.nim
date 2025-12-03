@@ -31,6 +31,7 @@ import svd_spec, svd_types, utils, versions
 
 using
   device: SvdElementValue
+  deviceName: string
   devicePath: Path
   outPath: Path
   outf: File
@@ -49,11 +50,12 @@ import metagenerator
 
 """
 
-proc renderPackageFile(devicePath, device)
+proc renderPackageFile(devicePath, device, deviceName)
 proc renderReadme(devicePath, device)
 proc renderLicense(devicePath)
 proc renderDevice(devicePath, device)
 proc renderPeripherals(devicePath, device)
+proc renderSeggerPeripherals(devicePath, device)
 proc renderPeripheral(outf, device, peripheral)
 proc renderInterrupt(outf, device, peripheral, interrupt)
 proc renderRegister(outf, device, peripheral, register)
@@ -83,33 +85,32 @@ func getAccess(elements: varargs[ptr SvdElementValue]): SvdAccess =
       return parseEnum[SvdAccess](accessEl.value)
   return defaultAccess
 
-proc renderNimPackageFromParsedSvd*(outPath, device): Path =
+proc renderNimPackageFromParsedSvd*(outPath, device, deviceName): Path =
   ## Renders the Nim device package at the outPath path.
-  ## The result is a nimblec-compliant package:
-  ##    <outPath>/<device.name.toLower>/
-  ##        <device.name.toLower>.nimble
+  ## The result is a nimble-compliant package:
+  ##    <outPath>/<deviceName>/
+  ##        <deviceName>.nimble
   ##        device.nim
   ##        toLower(<peripheral.name>).nim
   ##        ...
   ##
   assert dirExists(outPath)
-  assert device.name == "device",
-    "Expected top-level element, 'device', got: " & device.name
-  let deviceName = device.getElement("name").value
   let devicePath = outPath / Path(deviceName.toLower())
   if dirExists(devicePath):
     stderr.write(&"Exiting.  Target path already exists: {devicePath.string}")
     quit(QuitFailure)
   createDir(devicePath)
-  renderPackageFile(devicePath, device)
+  renderPackageFile(devicePath, device, deviceName)
   renderReadme(devicePath, device)
   renderLicense(devicePath)
-  renderDevice(devicePath, device)
-  renderPeripherals(devicePath, device)
+  if not device.isSeggerVariant:
+    renderDevice(devicePath, device)
+    renderPeripherals(devicePath, device)
+  else:
+    renderSeggerPeripherals(devicePath, device)
   result = devicePath
 
-proc renderPackageFile(devicePath, device) =
-  let deviceName = device.getElement("name").value
+proc renderPackageFile(devicePath, device, deviceName) =
   let fullVersion = getVersion().strip()
   let fileContents = &"""
 #!fmt: off
@@ -195,7 +196,7 @@ proc renderPeripherals(devicePath, device) =
   ## Write enumerated peripherals to a common module
   ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
   var outf: File
-  for k, p in device.getElement("peripherals").elements.pairs:
+  for _,p in device.getElement("peripherals").elements.pairs:
     assert p.name == "peripheral"
     let lowerPeriphName = getPeripheralBaseName(p).toLower
     let periphModule = devicePath / Path(lowerPeriphName).addFileExt("nim")
@@ -206,6 +207,26 @@ proc renderPeripherals(devicePath, device) =
       outf.write("#!fmt: off\n")
     outf.renderPeripheral(device, p)
     outf.close()
+
+proc renderSeggerPeripherals(devicePath, device) =
+  ## Write distinct peripherals to their own module.
+  ## Write enumerated peripherals to a common module
+  ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
+  var outf: File
+  for _,g in device.getElement("cpu").getElement("groups").elements.pairs:
+    if g.getElement("name").value.toLower() != "peripherals":
+      continue
+    for _,p in g.getElement("peripherals").elements.pairs:
+      assert p.name == "peripheral"
+      let lowerPeriphName = getPeripheralBaseName(p).toLower
+      let periphModule = devicePath / Path(lowerPeriphName).addFileExt("nim")
+      let exists = fileExists(periphModule)
+      assert outf.open(periphModule.string, fmAppend)
+      if not exists:
+        outf.write(importMetaGenerator)
+        outf.write("#!fmt: off\n")
+      outf.renderPeripheral(device, p)
+      outf.close()
 
 func getPeripheralBaseName(p: SvdElementValue): string =
   ## Removes digits from the tail of the peripheral's name.
@@ -249,7 +270,9 @@ proc renderRegister(outf, device, peripheral, register) =
   let isDimensioned = register.getElement("dim") != nilElementValue and
     register.getElement("dimIncrement") != nilElementValue
   let peripheralName = peripheral.getElement("name").value
-  let registerName = register.getElement("name").value
+  var registerName = register.getElement("name").value
+  if " " in registerName:
+    registerName = register.getElement("displayName").value
   let addressOffset = register.getElement("addressOffset").value
   let registerAccess = getAccess(addr device, addr peripheral, addr register)
   let description = register.getElement("description").value.removeWhitespace()
@@ -259,7 +282,8 @@ proc renderRegister(outf, device, peripheral, register) =
     let dim = parseAnyInt(register.getElement("dim").value)
     let dimIncrement = parseAnyInt(register.getElement("dimIncrement").value)
     var addressOffsetVal = parseAnyInt(addressOffset)
-    var regNameFmt = registerName.replace("[%s]", "$1")
+    let registerNameWithoutBrackets = registerName.replace("[%s]", "%s")
+    var regNameFmt = registerNameWithoutBrackets.replace("%s", "$1")
     for i in 0 ..< dim:
       let regName = `%`(regNameFmt, $i)
       outf.write(
@@ -326,14 +350,31 @@ proc renderField(outf, device, peripheral, registerName, register, field) =
     stderr.write(
       &"Warning: field {peripheral.getElement(\"name\").value}.{register.getElement(\"name\").value}.{field.getElement(\"name\").value} has derivedFrom attribute, which is not yet supported.\p"
     )
+  let isDimensioned = field.getElement("dim") != nilElementValue and
+    field.getElement("dimIncrement") != nilElementValue
   let peripheralName = peripheral.getElement("name").value
-  let fieldName = field.getElement("name").value
+  var fieldName = field.getElement("name").value
+  fieldName = fieldName.replace(" ", "_")
   let (bitOffset, bitWidth) = computeFieldBitRange(field)
   let fieldAccess = getAccess(addr device, addr peripheral, addr register, addr field)
   let description = field.getElement("description").value.removeWhitespace()
-  outf.write(
-    &"declareField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffset}, bitWidth = {bitWidth}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
-  )
+  if isDimensioned:
+    let dim = parseAnyInt(field.getElement("dim").value)
+    let dimIncrement = parseAnyInt(field.getElement("dimIncrement").value)
+    var bitOffsetVal = parseAnyInt(bitOffset)
+    fieldName = fieldName.replace("[%s]", "%s")
+    var fieldNameFmt = fieldName.replace("%s", "$1")
+    for i in 0 ..< dim:
+      fieldName = `%`(fieldNameFmt, $i)
+      outf.write(
+        &"declareField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffsetVal}, bitWidth = {bitWidth}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
+      )
+      bitOffsetVal += dimIncrement
+  else:
+    outf.write(
+      &"declareField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffset}, bitWidth = {bitWidth}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
+    )
+  # FIXME: enum's fieldName only matches with non-dimensioned fields
   let enumElements = field.getElement("enumeratedValues").elements
   if enumElements.len > 0:
     outf.write(

@@ -9,7 +9,7 @@
 
 import std/[paths, strformat, tables, xmlparser, xmltree]
 
-import svd_types, svd_spec
+import svd_types, svd_spec, segger_spec
 
 func addIfNotNil(elVals: var OrderedTable[string, SvdElementValue], el: SvdElementValue) =
   if el != nilElementValue:
@@ -34,7 +34,7 @@ func parseSvdAttributes(
           name: attrSpec.name, value: attrVal, dataType: attrSpec.dataType
         )
 
-func parseSvdElement*(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
+func parseSvdElement(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
   if xml.isNil:
     return nilElementValue
   assert xml.tag == spec.name, fmt"Expected tag '{spec.name}', got '{xml.tag}'"
@@ -58,8 +58,22 @@ func parseSvdElement*(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
         let elVal = parseSvdElement(el, elSpec)
         result.elements.addIfNotNil(elVal)
 
-proc parseSvdFile*(fn: Path): SvdElementValue =
-  const svdDeviceSpec = getSpec("device")
+proc parseSvdFile*(fn: Path): tuple[device: SvdElementValue, deviceName: string] =
+  const fileSpec = getSpec("device")
   let xml = loadXml(fn.string)
   assert xml.tag == "device"
-  result = parseSvdElement(xml, svdDeviceSpec)
+  let device = parseSvdElement(xml, fileSpec)
+  let deviceName = device.getElement("name").value
+  result = (device, deviceName)
+
+func parseSeggerElement(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
+  result = parseSvdElement(xml, spec)
+  result.isSeggerVariant = true
+
+proc parseSeggerFile*(fn: Path): tuple[device: SvdElementValue, deviceName: string] =
+  const fileSpec = getSeggerSpec("device")
+  let xml = loadXml(fn.string)
+  assert xml.tag == "device"
+  let device = parseSeggerElement(xml, fileSpec)
+  let deviceName = device.getElement("cpu").getElement("name").value
+  result = (device, deviceName)

@@ -1,6 +1,8 @@
 import std/[tables, unittest, xmlparser]
 
-import minisvd2nimpkg/[parser, svd_spec, svd_types]
+import minisvd2nimpkg/[svd_spec, svd_types]
+
+include minisvd2nimpkg/parser
 
 test "parseSvdElement SHOULD parse an empty tag":
   let xml = parseXml("<device></device>")

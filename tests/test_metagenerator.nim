@@ -9,12 +9,12 @@ import minisvd2nimpkg/[parser, renderer]
 block:
   # Build a example.nim file from example.svd
   let fn_example = paths.getCurrentDir() / Path("tests") / Path("example.svd")
-  let svd = parseSvdFile(fn_example)
+  let (device, deviceName) = parseSvdFile(fn_example)
   let fn_example_nim = changeFileExt(fn_example, "nim")
   var outf = open(fn_example_nim.string, fmWrite)
   defer:
     outf.close()
-  discard renderNimPackageFromParsedSvd(paths.getCurrentDir(), svd)
+  discard renderNimPackageFromParsedSvd(paths.getCurrentDir(), device, deviceName)
   # remove the directory that was just created by the test
   os.removeDir(toLower("ARM_Example"))
 
