@@ -2,9 +2,10 @@
 
 [minisvd2nim](github.com/dwhall/minisvd2nim) is a command line tool
 that processes one SVD file as input and renders declarative nim
-source to a nimble package.  The declarations invoke templates and macros
-during compilation of the application.  This way, a programmer can change
-the meta code, and not the minisvd2nim binary, to fix or improve the final code.
+source to a nimble package.  The declarations invoke templates and
+macros during compilation of the application.  This way, a programmer
+can change the meta code, and not the minisvd2nim binary, to fix or
+improve the final, generated code.
 
                                            ┌──────────────────────┐
                                            │                      │
@@ -48,7 +49,7 @@ and manufacturers of ARM based microcontrollers.
 
 The first reason it is called "mini" is because the codebase is small.
 The parser is under 70 lines of cleanish code.
-The renderer is under 300 lines of cleanish code.
+The renderer is under 400 lines of cleanish code.
 The templates and macros are under 300 lines of some mind-bending shit.
 
 The second reason it is called "mini" is because the resulting code,
