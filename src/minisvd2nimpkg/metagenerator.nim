@@ -31,15 +31,33 @@ type RegisterVal = uint32
 
 template declareDevice*(
     deviceName: untyped,
+    svdFileVersion: static string,
+    description: static string,
+): untyped =
+  # Device details tuple
+  const device* = (
+    name: astToStr(name),
+    svdFileVersion: svdFileVersion,
+    description: description,
+  )
+
+template declareCpu*(
+    cpuName: untyped,
+    cpuRevision: static string,
+    endian: static string,
     mpuPresent: static bool,
     fpuPresent: static bool,
     nvicPrioBits: static int,
+    vendorSysTick: static bool,
 ): untyped =
-  # Device details
-  const DEVICE* {.inject.} = astToStr(deviceName)
-  const MPU_PRESENT* {.inject.} = mpuPresent
-  const FPU_PRESENT* {.inject.} = fpuPresent
-  const NVIC_PRIO_BITS* {.inject.} = nvicPrioBits
+  # CPU details tuple
+  const cpu* = (
+    name: astToStr(cpuName),
+    revision: cpuRevision,
+    mpuPresent: mpuPresent,
+    fpuPresent: fpuPresent,
+    nvicPrioBits: nvicPrioBits,
+  )
 
 template declarePeripheral*(
     peripheralName: untyped, baseAddress: static uint32, peripheralDesc: static string

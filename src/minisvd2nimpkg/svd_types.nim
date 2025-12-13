@@ -3,7 +3,6 @@
 import std/tables
 
 type
-  # TODO: Use parseEnum[SvdEndianness] from std/strutils
   SvdEndianness* = enum
     little
     big

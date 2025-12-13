@@ -4,12 +4,11 @@
 that processes one SVD file as input and renders declarative nim
 source to a nimble package.  The declarations invoke templates and
 macros during compilation of the application.  This way, a programmer
-can change the meta code, and not the minisvd2nim binary, to fix or
-improve the final, generated code.
+can change metagenerator to improve the resulting code instead of
+changing and recompiling the minisvd2nim binary.
 
                                            ┌──────────────────────┐
                                            │                      │
-                                           │   minisvd2nimpkg/    │
                                            │  metagenerator.nim   │
                                            │                      │
                                            └─────────▲────────────┘
@@ -17,11 +16,11 @@ improve the final, generated code.
                                                      │ imports
                                                      │
     ┌──────────────────────┐               ┌─────────┴────────────┐
-    │                      │  minisvd2nim  │                      │
-    │   Device .svd file   │    renders    │    device package    │
-    │                      ├───────────────►                      │
-    └──────────────────────┘               └─────────▲────────────┘
-                                                     │
+    │                      │  minisvd2nim  │                      │┐
+    │   Device .svd file   │    renders    │    device package    ││
+    │                      ├───────────────►                      ││
+    └──────────────────────┘               └┬────────▲────────────┘│
+                                            └────────┼─────────────┘
                                                      │ imports
                                                      │
                                            ┌─────────┴────────────┐
@@ -30,6 +29,20 @@ improve the final, generated code.
                                            │     .nim source      │
                                            │                      │
                                            └──────────────────────┘
+
+## HOW TO Get Started
+
+```
+$ nimble build
+$ nimble test
+$ cd example/stm32
+$ nim build
+```
+Take a look at `example/stm32/blinky.nim`.  It is not set to cross-compile to ARM,
+but it should give you a starting point.
+
+[c2lora](https://github.com/dwhall/c2lora) is a project that build a package for
+a Nordic nRF52840.  The SVD stuff is in `deps/svd`.
 
 ## Related projects
 
@@ -50,7 +63,7 @@ and manufacturers of ARM based microcontrollers.
 The first reason it is called "mini" is because the codebase is small.
 The parser is under 70 lines of cleanish code.
 The renderer is under 400 lines of cleanish code.
-The templates and macros are under 300 lines of some mind-bending shit.
+The templates and macros are under 300 lines of some truly mind-bending shit.
 
 The second reason it is called "mini" is because the resulting code,
 when compiled to a binary, is as small as I can make it.
@@ -66,13 +79,12 @@ This means use hard-coded constants and static parameters wherever possible.
 3) Have your application depend on the generated nimble package:
     `import <yourDevice>/[device, periph]`
 
-Note that minisvd2nim **should** be installed in your Nim compiler's module path
-because the generated output depends on `minisvd2nimpkg/metagenerator`.
-Installing minisvd2nim via nimble is the easy way to do this.
+The generated output depends on `metagenerator`, which should be copied
+to the generated package directory.
 
 Also note that when you import `periph` you are importing a Nim module
 named lowercase `periph`.  You will then have access to that peripheral via the
-uppercase `PERIPH` symbol.
+symbols defined by the SVD file, which may be upper or lowercase.
 
 ## How to access the device
 
@@ -162,7 +174,7 @@ programmers understand what is going on under the hood.
 
 When you run minisvd2nim on an .svd file, the resulting package directory
 contains many files.  There is one special file named `device.nim` that
-has CPU information.  Then there is one file for every peripheral or set
+has device and CPU information.  Then there is one file for every peripheral or set
 of enumerated peripherals.  Inside each of these files are lines
 that begin with `declarePeripheral`, `declareRegister`, `declareField`, etc.
 
@@ -176,11 +188,20 @@ I update the `metagenerator` module and forget to update this doc)
 `device.nim` contains:
 
 ```nim
-# Device details
-const DEVICE* = "STM32F446"
-const MPU_PRESENT* = true
-const FPU_PRESENT* = true
-const NVIC_PRIO_BITS* = 4
+# Device details tuple
+const device* = (
+  name: "STM32F446",
+  svdFileVersion: "1.9",
+  description: "STM32F446",
+)
+# CPU details tuple
+const cpu* = (
+  name: "CM4",
+  revision: "r0p1",
+  mpuPresent: true,
+  fpuPresent: true,
+  nvicPrioBits: 4,
+)
 ```
 
 and then each peripheral file contains one or more of the following:

@@ -54,6 +54,7 @@ proc renderPackageFile(devicePath, device, deviceName)
 proc renderReadme(devicePath, device)
 proc renderLicense(devicePath)
 proc renderDevice(devicePath, device)
+proc renderCpu(outf, device)
 proc renderPeripherals(devicePath, device)
 proc renderSeggerPeripherals(devicePath, device)
 proc renderPeripheral(outf, device, peripheral)
@@ -105,7 +106,6 @@ proc renderNimPackageFromParsedSvd*(outPath, device, deviceName): Path =
   renderLicense(devicePath)
   if not device.isSeggerVariant:
     renderDevice(devicePath, device)
-    renderPeripherals(devicePath, device)
   else:
     renderSeggerPeripherals(devicePath, device)
   result = devicePath
@@ -184,13 +184,27 @@ proc renderDevice(devicePath, device) =
   defer:
     outf.close()
   let deviceName = device.getElement("name").value
+  let svdFileVersion = device.getElement("version").value
+  let description = device.getElement("description").value
+  outf.write(
+    importMetaGenerator & &"#!fmt: off\n" &
+      &"declareDevice(deviceName = {deviceName}, svdFileVersion = \"{svdFileVersion}\", description = \"{description}\")\p"
+  )
+  renderCpu(outf, device)
+  renderPeripherals(devicePath, device)
+
+proc renderCpu(outf, device) =
   let cpu = device.getElement("cpu")
+  let cpuName = cpu.getElement("name").value
+  let revision = cpu.getElement("revision").value
+  let endian = cpu.getElement("endian").value
   let mpuPresent = cpu.getElementValue("mpuPresent")
   let fpuPresent = cpu.getElementValue("fpuPresent")
   let nvicPrioBits = cpu.getElement("nvicPrioBits").value
+  let vendorSysTick = cpu.getElement("vendorSystickConfig").value
+  # TODO: fpuDP, deviceNumInterrupts (which optionally exist)
   outf.write(
-    importMetaGenerator & &"#!fmt: off\n" &
-      &"declareDevice(deviceName = {deviceName}, mpuPresent = {mpuPresent}, fpuPresent = {fpuPresent}, nvicPrioBits = {nvicPrioBits})\p"
+    &"declareCpu(cpuName = {cpuName}, revision = \"{revision}\", endian = \"{endian}\", mpuPresent = {mpuPresent}, fpuPresent = {fpuPresent}, nvicPrioBits = {nvicPrioBits}, vendorSysTick = {vendorSysTick})\p"
   )
 
 proc renderPeripherals(devicePath, device) =
