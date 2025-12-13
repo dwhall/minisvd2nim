@@ -167,13 +167,15 @@ THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED
     outf.close()
   outf.write(licenseFileContents)
 
-template castElementValue(specName: untyped, elName: string): untyped =
-  ## Cast an element's string value to the type declared by the spec.
-  ## Only bool for now (0/1 or false/true --> Nim bool).
-  when specElementTypeIsBool(astToStr(specName), elName):
-    specName.getElement(elName).value.toLowerAscii in ["true", "1"]
+func getElementValue(el: SvdElementValue, elName: string): string =
+  ## Cast an element's value to a string that represents the value
+  let typeFromSpec = getSpec(el.name).getElement(elName).dataType
+  let elVal = el.getElement(elName).value.toLowerAscii
+  case typeFromSpec
+  of svdBool:
+    if elVal in ["true", "1"]: "true" else: "false"
   else:
-    specName.getElement(elName).value
+    elVal
 
 proc renderDevice(devicePath, device) =
   let fn = devicePath / Path("device.nim")
@@ -183,8 +185,8 @@ proc renderDevice(devicePath, device) =
     outf.close()
   let deviceName = device.getElement("name").value
   let cpu = device.getElement("cpu")
-  let mpuPresent = castElementValue(cpu, "mpuPresent")
-  let fpuPresent = castElementValue(cpu, "mpuPresent")
+  let mpuPresent = cpu.getElementValue("mpuPresent")
+  let fpuPresent = cpu.getElementValue("fpuPresent")
   let nvicPrioBits = cpu.getElement("nvicPrioBits").value
   outf.write(
     importMetaGenerator & &"#!fmt: off\n" &

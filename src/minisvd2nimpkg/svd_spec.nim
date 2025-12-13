@@ -222,7 +222,14 @@ const
     ]
   )
 
-func getSpec*(name: static string): SvdElementSpec =
+func getElement*(elSpec: SvdElementSpec, name: string): SvdElementSpec =
+  ## Get the named child element spec from the given element spec.
+  result = nilElementSpec
+  for el in elSpec.elements:
+    if el.name == name:
+      result = el
+
+func getSpec*(name: string): SvdElementSpec =
   const nameToSpec = {
     "cpu": svdCpuSpec,
     "addressBlock": svdAddressBlockSpec,
@@ -253,14 +260,3 @@ func isLeaf*[T: SomeSvdSpec](spec: T): bool =
   spec.dataType != svdElement and
   spec.dataType != svdElementGroup and
   spec.dataType != svdAddressBlock
-
-func specElementTypeIsBool*(specName: static string, elName: static string): bool {.compileTime.} =
-  let spec = getSpec(specName)
-  for el in spec.elements:
-    if el.name == elName:
-      if el.dataType == svdBool:
-        return true
-      else:
-        break
-  return false
-

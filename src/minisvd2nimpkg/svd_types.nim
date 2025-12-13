@@ -92,7 +92,9 @@ type
     elements*: OrderedTable[string, SvdElementValue]
     isSeggerVariant*: bool
 
-const nilElementValue* = SvdElementValue()
+const
+  nilElementSpec* = SvdElementSpec()
+  nilElementValue* = SvdElementValue()
 
 func `==`*(a, b: SvdElementValue): bool =
   ## Compare two SvdElementValues for equality.
