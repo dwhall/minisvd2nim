@@ -91,7 +91,7 @@ proc renderNimPackageFromParsedSvd*(outPath, device, deviceName): Path =
   ##    <outPath>/<deviceName>/
   ##        <deviceName>.nimble
   ##        device.nim
-  ##        toLower(<peripheral.name>).nim
+  ##        <peripheral.name.toLower()>.nim
   ##        ...
   ##
   assert dirExists(outPath)
@@ -280,6 +280,8 @@ proc renderRegister(outf, device, peripheral, register) =
   let description = register.getElement("description").value.removeWhitespace()
   let derivedFrom = register.getAttr("derivedFrom").value
   let derivedFromSnippet = if register.hasAttr("derivedFrom"): &", derivedFrom = {derivedFrom}" else: ""
+  # TODO: address test_renderer.nim:27
+  # TODO: a derivedFrom register should copy all elements from the source register
   if isDimensioned:
     let dim = parseAnyInt(register.getElement("dim").value)
     let dimIncrement = parseAnyInt(register.getElement("dimIncrement").value)

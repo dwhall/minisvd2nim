@@ -1,17 +1,19 @@
-import std/[dirs, files, os, osproc, paths, strutils, tempfiles, unittest]
-
+import std/[files, os, osproc, paths, strutils, tempfiles, unittest]
 import minisvd2nimpkg/[parser, renderer]
 
 proc quoteWrap(s: string): string =
   "\"" & s & "\""
 
 suite "Test the renderer.":
+
+  # setup:
   let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_renderer")
   let tempPath = Path(tempDir)
   let fnTest = paths.getCurrentDir() / Path("tests") / Path("test.svd")
   let (device, deviceName) = parseSvdFile(fnTest)
-  discard renderNimPackageFromParsedSvd(tempPath, device, deviceName)
-  let devicePath = tempPath / Path("ARMCM4".toLower)
+  let devicePath = renderNimPackageFromParsedSvd(tempPath, device, deviceName)
+  let metagenPath = paths.getCurrentDir() / Path("src") / Path("minisvd2nimpkg") / Path("metagenerator.nim")
+  copyFileToDir(metagenPath.string, devicePath.string)
 
   test "there SHOULD be a procedure to render nim source":
     check compiles(renderNimPackageFromParsedSvd(tempPath, device, deviceName))
@@ -22,32 +24,18 @@ suite "Test the renderer.":
   test "the renderer SHOULD output a package LICENSE":
     check fileExists(devicePath / Path("LICENSE.txt"))
 
-  # test "the renderer SHOULD declare a field that is derivedFrom another register":
-  #   # REGX.BYTE1 derivesFrom REGX.BYTE0
-  #   let modPath = devicePath / Path("periphx.nim")
-  #   let modFile = readFile(modPath.string)
-  #   check "declareField(peripheralName = PERIPHX, registerName = REGX, fieldName = BYTE1" in
-  #     modFile
+# TODO: (see renderer.nim:283)
+#  test "the renderer SHOULD declare a field that is derivedFrom another register":
+#    # In test.svd DCMI.CR2 was instrumented with drivesFrom DCMI.CR which has a field CAPTURE
+#    let modPath = devicePath / Path("dcmi.nim")
+#    let modFile = readFile(modPath.string)
+#    check "declareField(peripheralName = DCMI, registerName = CR2, fieldName = CAPTURE" in modFile
 
   # TODO:
   # test "the renderer SHOULD declare a field that is derivedFrom another peripheral":
   # test "the renderer SHOULD declare a register that is derivedFrom another register":
   # test "the renderer SHOULD output enum values": # needs mods to .svd file
 
-  # Suite teardown
-  removeDir(tempPath)
-
-suite "Test the renderer on a big SVD file.":
-  let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_renderer")
-  var tempPath = Path(tempDir)
-  let fnStm32 = paths.getCurrentDir() / Path("tests") / Path("STM32F446_v1_7.svd")
-  let (device, deviceName) = parseSvdFile(fnStm32)
-  discard renderNimPackageFromParsedSvd(tempPath, device, deviceName)
-  let devicePath = tempPath / Path("STM32F446".toLower)
-  let metagenPath =
-    paths.getCurrentDir() / Path("src") / Path("minisvd2nimpkg") /
-    Path("metagenerator.nim")
-  copyFileToDir(metagenPath.string, devicePath.string)
 
   test "the renderer SHOULD output peripheral modules":
     # check the first, last and a few other peripherals
@@ -107,5 +95,5 @@ suite "Test the renderer on a big SVD file.":
     check "declareField(peripheralName = UART4, registerName = DEVICEID1, fieldName = DEVICEID, bitOffset = 0, bitWidth = 32, readAccess = true, writeAccess = false" in
       modFile
 
-  # Suite teardown
-  removeDir(tempPath)
+  # Teardown:
+  removeDir(tempPath.string)

@@ -13,8 +13,9 @@ test "the CLI should run with no input":
   let cmd = exeStr
   check 0 == execShellCmd(cmd)
 
-test "the CLI should process the example STM32 .svd file":
-  let cmd = exeStr & " tests" / "STM32F446_v1_7.svd"
+test "the CLI should process the example .svd file":
+  os.removeDir("test_small")
+  let cmd = exeStr & " tests" / "test_small.svd"
   check 0 == execShellCmd(cmd)
   # remove the directory that was just created by the test
-  os.removeDir("stm32f446")
+  os.removeDir("test_small")
