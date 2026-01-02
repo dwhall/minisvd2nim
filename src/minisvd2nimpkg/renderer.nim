@@ -371,8 +371,14 @@ proc renderField(outf, device, peripheral, registerName, register, field) =
   let isDimensioned = field.getElement("dim") != nilElementValue and
     field.getElement("dimIncrement") != nilElementValue
   let peripheralName = peripheral.getElement("name").value
+  const fieldNameReplacements = [ # Order is important
+    (", ", "_"),
+    (" & ", "_"),
+    (" ", "_"),
+  ]
   var fieldName = field.getElement("name").value
-  fieldName = fieldName.replace(" ", "_")
+  for (match, replacement) in fieldNameReplacements:
+    fieldName = fieldName.replace(match, replacement)
   let (bitOffset, bitWidth) = computeFieldBitRange(field)
   let fieldAccess = getAccess(addr device, addr peripheral, addr register, addr field)
   let description = field.getElement("description").value.removeWhitespace()
