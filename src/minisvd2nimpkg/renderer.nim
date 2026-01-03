@@ -25,7 +25,7 @@
 ## or added to a project as a dependency in source form.
 ##
 
-import std/[algorithm, files, os, paths, strformat, strutils, tables]
+import std/[algorithm, files, os, paths, sets, strformat, strutils, tables]
 
 import svd_spec, svd_types, utils, versions
 
@@ -214,43 +214,43 @@ proc renderPeripherals(pkgPath, device) =
   ## Write enumerated peripherals to a common module
   ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
   var outf: File
-  var i = 0
+  var periphFileSet = initHashSet[string]()
   for _,p in device.getElement("peripherals").elements.pairs:
     assert p.name == "peripheral"
     let lowerPeriphName = getPeripheralBaseName(p).toLower
     let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
     let exists = fileExists(periphModule)
-    let mode = if i == 0: fmWrite else: fmAppend
+    let mode = if lowerPeriphName in periphFileSet: fmAppend else: fmWrite
     assert outf.open(periphModule.string, mode)
     if not exists:
       outf.write(importMetaGenerator)
       outf.write("#!fmt: off\n")
     outf.renderPeripheral(device, p)
     outf.close()
-    inc i
+    periphFileSet.incl(lowerPeriphName)
 
 proc renderSeggerPeripherals(pkgPath, device) =
   ## Write distinct peripherals to their own module.
   ## Write enumerated peripherals to a common module
   ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
   var outf: File
+  var periphFileSet = initHashSet[string]()
   for _,g in device.getElement("cpu").getElement("groups").elements.pairs:
     if g.getElement("name").value.toLower() != "peripherals":
       continue
-    var i = 0
     for _,p in g.getElement("peripherals").elements.pairs:
       assert p.name == "peripheral"
       let lowerPeriphName = getPeripheralBaseName(p).toLower
       let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
       let exists = fileExists(periphModule)
-      let mode = if i == 0: fmWrite else: fmAppend
+      let mode = if lowerPeriphName in periphFileSet: fmAppend else: fmWrite
       assert outf.open(periphModule.string, mode)
       if not exists:
         outf.write(importMetaGenerator)
         outf.write("#!fmt: off\n")
       outf.renderPeripheral(device, p)
       outf.close()
-      inc i
+      periphFileSet.incl(lowerPeriphName)
 
 func getPeripheralBaseName(p: SvdElementValue): string =
   ## Removes digits from the tail of the peripheral's name.

@@ -1,8 +1,8 @@
-import std/[files, dirs, os, osproc, paths, strutils, tempfiles, unittest]
-import minisvd2nimpkg/parser
-
 # File under test:
 include minisvd2nimpkg/renderer
+
+import std/[dirs, osproc, tempfiles, unittest]
+import minisvd2nimpkg/parser
 
 proc quoteWrap(s: string): string =
   "\"" & s & "\""
@@ -119,3 +119,26 @@ suite "Test the renderer.":
 
   # Teardown:
   removeDir(tempPath.string)
+
+suite "regression tests":
+  # setup:
+  let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_render_regressions")
+  let tempPath = Path(tempDir)
+  let pkgPath = tempPath
+
+  test "renderPeripherals SHOULD NOT append to existing files":
+    let fnTest = paths.getCurrentDir() / Path("tests") / Path("test_small.svd")
+    let (device, _) = parseSvdFile(fnTest)
+    let modPath = pkgPath / Path("timer.nim")
+    writeFile(modPath.string, "THIS_SHOULD_BE_REMOVED\n")
+
+    # Render twice to see if it appends to the existing file
+    renderPeripherals(pkgPath, device)
+    renderPeripherals(pkgPath, device)
+
+    let modFile = readFile(modPath.string)
+    check not ("THIS_SHOULD_BE_REMOVED" in modFile)
+    check fileExists(modPath)
+
+  # Teardown:
+  #removeDir(tempPath.string)
