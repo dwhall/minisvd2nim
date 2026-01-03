@@ -104,7 +104,7 @@ suite "Test the renderer.":
     var params = @["--force", "--segger", "D:\\code\\nim\\arm_cores\\src\\segger\\Cortex-M23.svd"]
     let cwd = "D:\\code\\nim\\arm_cores\\"
     params.removeAbsolutePath(cwd)
-    check not ("D:\\code\\nim\\arm_cores\\src\\segger\\Cortex-M23.svd" in params)
+    check "D:\\code\\nim\\arm_cores\\src\\segger\\Cortex-M23.svd" notin params
     check "src\\segger\\Cortex-M23.svd" in params
 
   test "removeAbsolutePath SHOULD NOT modify a mismatched path":
@@ -137,7 +137,7 @@ suite "regression tests":
     renderPeripherals(pkgPath, device)
 
     let modFile = readFile(modPath.string)
-    check not ("THIS_SHOULD_BE_REMOVED" in modFile)
+    check "THIS_SHOULD_BE_REMOVED" notin modFile
     check fileExists(modPath)
 
   # Teardown:

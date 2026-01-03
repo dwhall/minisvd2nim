@@ -42,7 +42,7 @@ using
   field: SvdElementValue
   access: SvdAccess
 
-const importMetaGenerator =
+const importMetaGeneratorHeader =
   """# To learn how to use the output of the declarations below, visit:
 # https://github.com/dwhall/minisvd2nim/blob/main/README.md#how-to-access-the-device
 
@@ -189,7 +189,7 @@ proc renderDevice(pkgPath, device) =
   let svdFileVersion = device.getElement("version").value
   let description = device.getElement("description").value
   outf.write(
-    importMetaGenerator & &"#!fmt: off\n" &
+    importMetaGeneratorHeader & &"#!fmt: off\n" &
       &"declareDevice(deviceName = {deviceName}, svdFileVersion = \"{svdFileVersion}\", description = \"{description}\")\p"
   )
   renderCpu(outf, device)
@@ -219,11 +219,11 @@ proc renderPeripherals(pkgPath, device) =
     assert p.name == "peripheral"
     let lowerPeriphName = getPeripheralBaseName(p).toLower
     let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
-    let exists = fileExists(periphModule)
-    let mode = if lowerPeriphName in periphFileSet: fmAppend else: fmWrite
+    let overwriteTheFile = lowerPeriphName notin periphFileSet
+    let mode = if overwriteTheFile: fmWrite else: fmAppend
     assert outf.open(periphModule.string, mode)
-    if not exists:
-      outf.write(importMetaGenerator)
+    if overwriteTheFile:
+      outf.write(importMetaGeneratorHeader)
       outf.write("#!fmt: off\n")
     outf.renderPeripheral(device, p)
     outf.close()
@@ -242,11 +242,11 @@ proc renderSeggerPeripherals(pkgPath, device) =
       assert p.name == "peripheral"
       let lowerPeriphName = getPeripheralBaseName(p).toLower
       let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
-      let exists = fileExists(periphModule)
-      let mode = if lowerPeriphName in periphFileSet: fmAppend else: fmWrite
+      let overwriteTheFile = lowerPeriphName notin periphFileSet
+      let mode = if overwriteTheFile: fmWrite else: fmAppend
       assert outf.open(periphModule.string, mode)
-      if not exists:
-        outf.write(importMetaGenerator)
+      if overwriteTheFile:
+        outf.write(importMetaGeneratorHeader)
         outf.write("#!fmt: off\n")
       outf.renderPeripheral(device, p)
       outf.close()
