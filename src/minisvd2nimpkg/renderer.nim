@@ -204,17 +204,20 @@ proc renderPeripherals(pkgPath, device) =
   ## Write enumerated peripherals to a common module
   ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
   var outf: File
+  var i = 0
   for _,p in device.getElement("peripherals").elements.pairs:
     assert p.name == "peripheral"
     let lowerPeriphName = getPeripheralBaseName(p).toLower
     let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
     let exists = fileExists(periphModule)
-    assert outf.open(periphModule.string, fmAppend)
+    let mode = if i == 0: fmWrite else: fmAppend
+    assert outf.open(periphModule.string, mode)
     if not exists:
       outf.write(importMetaGenerator)
       outf.write("#!fmt: off\n")
     outf.renderPeripheral(device, p)
     outf.close()
+    inc i
 
 proc renderSeggerPeripherals(pkgPath, device) =
   ## Write distinct peripherals to their own module.
@@ -224,17 +227,20 @@ proc renderSeggerPeripherals(pkgPath, device) =
   for _,g in device.getElement("cpu").getElement("groups").elements.pairs:
     if g.getElement("name").value.toLower() != "peripherals":
       continue
+    var i = 0
     for _,p in g.getElement("peripherals").elements.pairs:
       assert p.name == "peripheral"
       let lowerPeriphName = getPeripheralBaseName(p).toLower
       let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
       let exists = fileExists(periphModule)
-      assert outf.open(periphModule.string, fmAppend)
+      let mode = if i == 0: fmWrite else: fmAppend
+      assert outf.open(periphModule.string, mode)
       if not exists:
         outf.write(importMetaGenerator)
         outf.write("#!fmt: off\n")
       outf.renderPeripheral(device, p)
       outf.close()
+      inc i
 
 func getPeripheralBaseName(p: SvdElementValue): string =
   ## Removes digits from the tail of the peripheral's name.
