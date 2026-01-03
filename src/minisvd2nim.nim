@@ -2,9 +2,9 @@
 ## parses the given .svd input file and outputs nim source to stdout.
 ##
 
-import std/[files, os, parseopt, paths, strformat, strutils, syncio]
+import std/[dirs, files, os, parseopt, paths, strformat, strutils, syncio]
 
-import minisvd2nimpkg/[parser, renderer, versions]
+import minisvd2nimpkg/[parser, renderer, svd_types, versions]
 
 const
   version = &"version: {getVersion()}\p"
@@ -26,8 +26,8 @@ Options:
 
 proc parseArgs(): tuple[fn: Path, outPath: Path, isSegger: bool]
 proc validateArgs(fn: Path, outPath: Path)
-proc processPeripheralPackage(fn: Path, outPath: Path)
-proc processCpuPackage(fn: Path, outPath: Path)
+proc processPackage(device: SvdElementValue, outPath: Path, deviceName: string)
+proc preparePackageDir(pkgPath: Path)
 proc writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure)
 proc copyMetageneratorFileToPackage(pkgPath: Path)
 
@@ -35,10 +35,10 @@ proc main() =
   try:
     let (fn, outPath, isSegger) = parseArgs()
     validateArgs(fn, outPath)
-    if isSegger:
-      processCpuPackage(fn, outPath)
-    else:
-      processPeripheralPackage(fn, outPath)
+    let (device, deviceName) =
+      if isSegger: parseSeggerFile(fn)
+      else: parseSvdFile(fn)
+    processPackage(device, outPath, deviceName)
   except IOError as e:
     writeMsgAndQuit(stdout, "Error: " & e.msg & "\n" & usage)
 
@@ -73,23 +73,24 @@ proc writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure) =
   quit(errorCode)
 
 proc validateArgs(fn: Path, outPath: Path) =
-  # If no file was given, quit successfully
   if fn.string == "":
     writeMsgAndQuit(stdout, usage, QuitSuccess)
-
-  # If the given file cannot be found, quit with error
   if not fileExists(fn):
     writeMsgAndQuit(stdout, usage)
+  if not dirExists(outPath):
+    writeMsgAndQuit(stdout, &"Output path does not exist: {outPath.string}")
 
-proc processCpuPackage(fn: Path, outPath: Path) =
-  let (device, deviceName) = parseSeggerFile(fn)
-  let pkgPath = renderNimPackageFromParsedSvd(outPath, device, deviceName)
+proc processPackage(device: SvdElementValue, outPath: Path, deviceName: string) =
+  let pkgPath = outPath / Path(deviceName.toLower())
+  preparePackageDir(pkgPath)
+  renderNimPackageFromParsedSvd(device, pkgPath, deviceName)
   copyMetageneratorFileToPackage(pkgPath)
 
-proc processPeripheralPackage(fn: Path, outPath: Path) =
-  let (device, deviceName) = parseSvdFile(fn)
-  let pkgPath = renderNimPackageFromParsedSvd(outPath, device, deviceName)
-  copyMetageneratorFileToPackage(pkgPath)
+proc preparePackageDir(pkgPath: Path) =
+  if dirExists(pkgPath):
+    stderr.write(&"Exiting.  Target path already exists: {pkgPath.string}")
+    quit(QuitFailure)
+  createDir(pkgPath)
 
 proc copyMetageneratorFileToPackage(pkgPath: Path) =
   const

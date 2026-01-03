@@ -25,14 +25,14 @@
 ## or added to a project as a dependency in source form.
 ##
 
-import std/[algorithm, dirs, files, os, paths, strformat, strutils, tables]
+import std/[algorithm, files, os, paths, strformat, strutils, tables]
 
 import svd_spec, svd_types, utils, versions
 
 using
   device: SvdElementValue
   deviceName: string
-  devicePath: Path
+  pkgPath: Path
   outPath: Path
   outf: File
   peripheral: SvdElementValue
@@ -50,13 +50,13 @@ import metagenerator
 
 """
 
-proc renderPackageFile(devicePath, device, deviceName)
-proc renderReadme(devicePath, device)
-proc renderLicense(devicePath)
-proc renderDevice(devicePath, device)
+proc renderPackageFile(pkgPath, device, deviceName)
+proc renderReadme(pkgPath, device)
+proc renderLicense(pkgPath)
+proc renderDevice(pkgPath, device)
 proc renderCpu(outf, device)
-proc renderPeripherals(devicePath, device)
-proc renderSeggerPeripherals(devicePath, device)
+proc renderPeripherals(pkgPath, device)
+proc renderSeggerPeripherals(pkgPath, device)
 proc renderPeripheral(outf, device, peripheral)
 proc renderInterrupt(outf, device, peripheral, interrupt)
 proc renderRegister(outf, device, peripheral, register)
@@ -86,7 +86,7 @@ func getAccess(elements: varargs[ptr SvdElementValue]): SvdAccess =
       return parseEnum[SvdAccess](accessEl.value)
   return defaultAccess
 
-proc renderNimPackageFromParsedSvd*(outPath, device, deviceName): Path =
+proc renderNimPackageFromParsedSvd*(device, pkgPath, deviceName) =
   ## Renders the Nim device package at the outPath path.
   ## The result is a nimble-compliant package:
   ##    <outPath>/<deviceName>/
@@ -94,23 +94,15 @@ proc renderNimPackageFromParsedSvd*(outPath, device, deviceName): Path =
   ##        device.nim
   ##        <peripheral.name.toLower()>.nim
   ##        ...
-  ##
-  assert dirExists(outPath)
-  let devicePath = outPath / Path(deviceName.toLower())
-  if dirExists(devicePath):
-    stderr.write(&"Exiting.  Target path already exists: {devicePath.string}")
-    quit(QuitFailure)
-  createDir(devicePath)
-  renderPackageFile(devicePath, device, deviceName)
-  renderReadme(devicePath, device)
-  renderLicense(devicePath)
+  renderPackageFile(pkgPath, device, deviceName)
+  renderReadme(pkgPath, device)
+  renderLicense(pkgPath)
   if not device.isSeggerVariant:
-    renderDevice(devicePath, device)
+    renderDevice(pkgPath, device)
   else:
-    renderSeggerPeripherals(devicePath, device)
-  result = devicePath
+    renderSeggerPeripherals(pkgPath, device)
 
-proc renderPackageFile(devicePath, device, deviceName) =
+proc renderPackageFile(pkgPath, device, deviceName) =
   let fullVersion = getVersion().strip()
   let fileContents = &"""
 #!fmt: off
@@ -124,16 +116,16 @@ requires
   "nim >= 2.0"
 """
   var outf: File
-  let packageFn = devicePath / Path(deviceName.toLower()).addFileExt("nimble")
+  let packageFn = pkgPath / Path(deviceName.toLower()).addFileExt("nimble")
   assert outf.open(packageFn.string, fmWrite)
   defer:
     outf.close()
   outf.write(fileContents)
 
-proc renderReadme(devicePath, device) =
+proc renderReadme(pkgPath, device) =
   let filenameParts = getAppFilename().splitFile()
   let toolName = filenameParts.name & filenameParts.ext
-  let readme = devicePath / Path("README.txt")
+  let readme = pkgPath / Path("README.txt")
   var outf: File
   assert outf.open(readme.string, fmWrite)
   defer:
@@ -150,7 +142,7 @@ Input file version:   {device.getElement("version").value}
 """
   )
 
-proc renderLicense(devicePath) =
+proc renderLicense(pkgPath) =
   const licenseFileContents =
     """Copyright 2024 Dean Hall
 
@@ -160,7 +152,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   """
-  let licenseFn = devicePath / Path("LICENSE.txt")
+  let licenseFn = pkgPath / Path("LICENSE.txt")
   var outf: File
   assert outf.open(licenseFn.string, fmWrite)
   defer:
@@ -177,8 +169,8 @@ func getElementValue(el: SvdElementValue, elName: string): string =
   else:
     elVal
 
-proc renderDevice(devicePath, device) =
-  let fn = devicePath / Path("device.nim")
+proc renderDevice(pkgPath, device) =
+  let fn = pkgPath / Path("device.nim")
   var outf: File
   assert outf.open(fn.string, fmWrite)
   defer:
@@ -191,7 +183,7 @@ proc renderDevice(devicePath, device) =
       &"declareDevice(deviceName = {deviceName}, svdFileVersion = \"{svdFileVersion}\", description = \"{description}\")\p"
   )
   renderCpu(outf, device)
-  renderPeripherals(devicePath, device)
+  renderPeripherals(pkgPath, device)
 
 proc renderCpu(outf, device) =
   let cpu = device.getElement("cpu")
@@ -207,7 +199,7 @@ proc renderCpu(outf, device) =
     &"declareCpu(cpuName = {cpuName}, revision = \"{revision}\", endian = \"{endian}\", mpuPresent = {mpuPresent}, fpuPresent = {fpuPresent}, nvicPrioBits = {nvicPrioBits}, vendorSysTick = {vendorSysTick})\p"
   )
 
-proc renderPeripherals(devicePath, device) =
+proc renderPeripherals(pkgPath, device) =
   ## Write distinct peripherals to their own module.
   ## Write enumerated peripherals to a common module
   ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
@@ -215,7 +207,7 @@ proc renderPeripherals(devicePath, device) =
   for _,p in device.getElement("peripherals").elements.pairs:
     assert p.name == "peripheral"
     let lowerPeriphName = getPeripheralBaseName(p).toLower
-    let periphModule = devicePath / Path(lowerPeriphName).addFileExt("nim")
+    let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
     let exists = fileExists(periphModule)
     assert outf.open(periphModule.string, fmAppend)
     if not exists:
@@ -224,7 +216,7 @@ proc renderPeripherals(devicePath, device) =
     outf.renderPeripheral(device, p)
     outf.close()
 
-proc renderSeggerPeripherals(devicePath, device) =
+proc renderSeggerPeripherals(pkgPath, device) =
   ## Write distinct peripherals to their own module.
   ## Write enumerated peripherals to a common module
   ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
@@ -235,7 +227,7 @@ proc renderSeggerPeripherals(devicePath, device) =
     for _,p in g.getElement("peripherals").elements.pairs:
       assert p.name == "peripheral"
       let lowerPeriphName = getPeripheralBaseName(p).toLower
-      let periphModule = devicePath / Path(lowerPeriphName).addFileExt("nim")
+      let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
       let exists = fileExists(periphModule)
       assert outf.open(periphModule.string, fmAppend)
       if not exists:
