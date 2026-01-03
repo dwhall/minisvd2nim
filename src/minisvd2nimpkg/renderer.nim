@@ -62,6 +62,7 @@ proc renderInterrupt(outf, device, peripheral, interrupt)
 proc renderRegister(outf, device, peripheral, register)
 proc renderField(outf, device, peripheral, registerName, register, field)
 func getPeripheralBaseName(p: SvdElementValue): string
+proc removeAbsolutePath(params: var seq[string], absPath: string)
 
 func readAccess(access): bool =
   access == readOnly or access == readWrite or access == readWriteOnce
@@ -126,6 +127,9 @@ proc renderReadme(pkgPath, device) =
   let filenameParts = getAppFilename().splitFile()
   let toolName = filenameParts.name & filenameParts.ext
   let readme = pkgPath / Path("README.txt")
+  var params = commandLineParams()
+  let cwd = os.getCurrentDir() & DirSep
+  params.removeAbsolutePath(cwd)
   var outf: File
   assert outf.open(readme.string, fmWrite)
   defer:
@@ -137,10 +141,16 @@ Edits will be lost if the tool is run again.
 
 Tool:                 {toolName}
 Tool version:         {getVersion().strip()}
-Tool args:            {commandLineParams()}
+Tool args:            {params}
 Input file version:   {device.getElement("version").value}
 """
   )
+
+proc removeAbsolutePath(params: var seq[string], absPath: string) =
+  if not os.isAbsolute(absPath): return
+  for param in params.mitems:
+    if absPath in param:
+      param = param.replace(absPath, "")
 
 proc renderLicense(pkgPath) =
   const licenseFileContents =
