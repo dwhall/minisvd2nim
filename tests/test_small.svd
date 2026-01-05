@@ -111,6 +111,12 @@
                 </enumeratedValue>
               </enumeratedValues>
             </field>
+            <field>
+              <name>DASH-B-GONE</name>
+              <description>Test that the name is adjusted</description>
+              <bitRange>[1:1]</bitRange>
+              <access>read-write</access>
+            </field>
           </fields>
         </register>
       </registers>

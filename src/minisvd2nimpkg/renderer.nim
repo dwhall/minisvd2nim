@@ -25,7 +25,7 @@
 ## or added to a project as a dependency in source form.
 ##
 
-import std/[algorithm, files, os, paths, sets, strformat, strutils, tables]
+import std/[algorithm, os, paths, sets, strformat, strutils, tables]
 
 import svd_spec, svd_types, utils, versions
 
@@ -383,6 +383,7 @@ proc renderField(outf, device, peripheral, registerName, register, field) =
     (", ", "_"),
     (" & ", "_"),
     (" ", "_"),
+    ("-", "_"),
   ]
   var fieldName = field.getElement("name").value
   for (match, replacement) in fieldNameReplacements:

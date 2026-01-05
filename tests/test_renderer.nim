@@ -1,7 +1,7 @@
 # File under test:
 include minisvd2nimpkg/renderer
 
-import std/[dirs, osproc, tempfiles, unittest]
+import std/[dirs, files, osproc, tempfiles, unittest]
 import minisvd2nimpkg/parser
 
 proc quoteWrap(s: string): string =
@@ -125,10 +125,10 @@ suite "regression tests":
   let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_render_regressions")
   let tempPath = Path(tempDir)
   let pkgPath = tempPath
+  let fnTest = paths.getCurrentDir() / Path("tests") / Path("test_small.svd")
+  let (device, _) = parseSvdFile(fnTest)
 
   test "renderPeripherals SHOULD NOT append to existing files":
-    let fnTest = paths.getCurrentDir() / Path("tests") / Path("test_small.svd")
-    let (device, _) = parseSvdFile(fnTest)
     let modPath = pkgPath / Path("timer.nim")
     writeFile(modPath.string, "THIS_SHOULD_BE_REMOVED\n")
 
@@ -140,5 +140,11 @@ suite "regression tests":
     check "THIS_SHOULD_BE_REMOVED" notin modFile
     check fileExists(modPath)
 
+  test "renderField SHOULD replace hyphens with underscores":
+    let modPath = pkgPath / Path("timer.nim")
+    let modFile = readFile(modPath.string)
+    check "DASH-B-GONE" notin modFile
+    check "DASH_B_GONE" in modFile
+
   # Teardown:
-  #removeDir(tempPath.string)
+  removeDir(tempPath.string)
