@@ -87,17 +87,25 @@ suite "Test the renderer.":
     check "declareField(peripheralName = UART4, registerName = SR, fieldName = OVERRUN, bitOffset = 0, bitWidth = 1" in
       modFile
 
-  test "the renderer SHOULD output registers from a dim element group":
+  test "the renderer SHOULD output a dimensioned register declaration":
     # The SVD file is instrumented to have UART4.DEVICEID[%s] with dim = 0x2, dimIncrement = 0x4
     let modPath = pkgPath / Path("uart.nim")
     let modFile = readFile(modPath.string)
-    check "declareRegister(peripheralName = UART4, registerName = DEVICEID0, addressOffset = 0x00000060'u32, readAccess = true, writeAccess = false" in
+    check "declareDimRegister(peripheralName = UART4, registerName = DEVICEID, addressOffset = 0x00000060'u32, dim = 2, dimIncrement = 4, readAccess = true, writeAccess = false" in
       modFile
-    check "declareField(peripheralName = UART4, registerName = DEVICEID0, fieldName = DEVICEID, bitOffset = 0, bitWidth = 32, readAccess = true, writeAccess = false" in
+
+  test "the renderer SHOULD output fields of a dimensioned register":
+    # The SVD file is instrumented to have UART4.DEVICEID[%s] with a field named DEVICETYPE
+    let modPath = pkgPath / Path("uart.nim")
+    let modFile = readFile(modPath.string)
+    check "declareField(peripheralName = UART4, registerName = DEVICEID, fieldName = DEVICETYPE, bitOffset = 0, bitWidth = 32" in
       modFile
-    check "declareRegister(peripheralName = UART4, registerName = DEVICEID1, addressOffset = 0x00000064'u32, readAccess = true, writeAccess = false" in
-      modFile
-    check "declareField(peripheralName = UART4, registerName = DEVICEID1, fieldName = DEVICEID, bitOffset = 0, bitWidth = 32, readAccess = true, writeAccess = false" in
+
+  test "the renderer SHOULD output fields of a register derived from a dimensioned register":
+    # The SVD file is instrumented to have UART5.DEVICEID[%s] with a field named DEVICETYPE
+    let modPath = pkgPath / Path("uart.nim")
+    let modFile = readFile(modPath.string)
+    check "declareField(peripheralName = UART5, registerName = DEVICEID, fieldName = DEVICETYPE, bitOffset = 0, bitWidth = 32" in
       modFile
 
   test "removeAbsolutePath SHOULD remove absolute path":

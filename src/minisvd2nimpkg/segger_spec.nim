@@ -10,11 +10,6 @@ import std/tables
 import svd_spec, svd_types
 
 const
-  svdFieldSpec = getSpec("field")
-  svdFieldsSpec = getSpec("fields")
-  svdRegisterSpec = getSpec("register")
-  svdRegistersSpec = getSpec("registers")
-  svdPeripheralSpec = getSpec("peripheral")
   svdPeripheralsSpec = getSpec("peripherals")
 
   groupSpec = SvdElementSpec(

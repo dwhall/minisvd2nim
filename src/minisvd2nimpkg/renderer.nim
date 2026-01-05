@@ -290,9 +290,12 @@ proc renderInterrupt(outf, device, peripheral, interrupt) =
     &"declareInterrupt(peripheralName = {peripheralName}, interruptName = {interruptName}, interruptValue = {interruptValue}, interruptDesc = \"{description}\")\p"
   )
 
+func isDimensioned(el: SvdElementValue): bool =
+  ## Returns true if the register or field element is dimensioned
+  el.getElement("dim") != nilElementValue and
+    el.getElement("dimIncrement") != nilElementValue
+
 proc renderRegister(outf, device, peripheral, register) =
-  let isDimensioned = register.getElement("dim") != nilElementValue and
-    register.getElement("dimIncrement") != nilElementValue
   let peripheralName = peripheral.getElement("name").value
   var registerName = register.getElement("name").value
   if " " in registerName:
@@ -304,20 +307,18 @@ proc renderRegister(outf, device, peripheral, register) =
   let derivedFromSnippet = if register.hasAttr("derivedFrom"): &", derivedFrom = {derivedFrom}" else: ""
   # TODO: address test_renderer.nim:27
   # TODO: a derivedFrom register should copy all elements from the source register
-  if isDimensioned:
+  if register.isDimensioned:
     let dim = parseAnyInt(register.getElement("dim").value)
     let dimIncrement = parseAnyInt(register.getElement("dimIncrement").value)
-    var addressOffsetVal = parseAnyInt(addressOffset)
-    let registerNameWithoutBrackets = registerName.replace("[%s]", "%s")
-    var regNameFmt = registerNameWithoutBrackets.replace("%s", "$1")
-    for i in 0 ..< dim:
-      let regName = `%`(regNameFmt, $i)
-      outf.write(
-        &"declareRegister(peripheralName = {peripheralName}, registerName = {regName}, addressOffset = 0x{addressOffsetVal.toHex}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"
-      )
-      for _, field in register.getElement("fields").elements.pairs:
-        renderField(outf, device, peripheral, regName, register, field)
-      addressOffsetVal += dimIncrement
+    let addressOffsetVal = parseAnyInt(addressOffset)
+    var registerNameStripped = registerName.replace("[%s]", "%s")
+    registerNameStripped = registerNameStripped.replace("_%s", "%s")
+    registerNameStripped = registerNameStripped.replace("%s", "")
+    outf.write(
+      &"declareDimRegister(peripheralName = {peripheralName}, registerName = {registerNameStripped}, addressOffset = 0x{addressOffsetVal.toHex}'u32, dim = {dim}, dimIncrement = {dimIncrement}, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"
+    )
+    for _, field in register.getElement("fields").elements.pairs:
+      renderField(outf, device, peripheral, registerNameStripped, register, field)
   else:
     outf.write(
       &"declareRegister(peripheralName = {peripheralName}, registerName = {registerName}, addressOffset = {addressOffset}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"

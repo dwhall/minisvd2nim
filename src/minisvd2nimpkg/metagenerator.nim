@@ -142,6 +142,75 @@ template declareRegister*(
   type `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
   declareRegisterBody(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc)
 
+template declareDimRegister*(
+    peripheralName: untyped,
+    registerName: untyped,
+    addressOffset: static uint32,
+    dim: static uint32,
+    dimIncrement: static uint32,
+    readAccess: static bool,
+    writeAccess: static bool,
+    registerDesc: static string
+): untyped =
+  ## Declares a dimensioned register, which is an array of registers with
+  ## similar purpose, identical fields, that only differ by offset from the base.
+  ## We access a dimensioned register by overloading the subscript operator to calculate
+  ## the address.  The result appears as if we are indexing into an array of registers.
+  ##    var r0 = PERIPH.REG[0] # read
+  ##    PERIPH.REG[1] = r1     # write
+  ##    PERIPH.REG[1]          # read-modify-write
+  ##          .FIELD(0x80)
+  ##          .write()
+  type
+    `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
+    `peripheralName _ registerName DimPtr` {.inject.} = ptr `peripheralName _ registerName Val`
+    `peripheralName _ registerName Ptr` {.inject.} = ptr `peripheralName _ registerName Val`
+
+  const `peripheralName _ registerName` {.inject.} =
+    cast[`peripheralName _ registerName DimPtr`](`peripheralName`.uint32 + addressOffset)
+
+  proc `registerName`*(base: static `peripheralName Base`): `peripheralName _ registerName DimPtr` {.inline.} =
+    `peripheralName _ registerName`
+
+  when readAccess:
+    proc `[]`*(_: `peripheralName _ registerName DimPtr`, index: static int): `peripheralName _ registerName Val` {.inline.} =
+      when not (index >= 0 and index.uint32 < dim): "Index out of bounds"
+      const regPtr = cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset + index.uint32 * dimIncrement)
+      volatileLoad(regPtr)
+
+    proc `[]`*(_: `peripheralName _ registerName DimPtr`, index: int): `peripheralName _ registerName Val` {.inline.} =
+      assert index >= 0 and index.uint32 < dim, "Index out of bounds"
+      let regPtr = cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset + index.uint32 * dimIncrement)
+      volatileLoad(regPtr)
+
+  when writeAccess:
+    proc `[]=`*(
+        _: `peripheralName _ registerName DimPtr`, index: static int,
+        val: RegisterVal | `peripheralName _ registerName Val`
+    ) {.inline.} =
+      when not (index >= 0 and index.uint32 < dim): "Index out of bounds"
+      const regPtr = cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset + index.uint32 * dimIncrement)
+      volatileStore(regPtr, val)
+
+    proc `[]=`*(
+        _: `peripheralName _ registerName DimPtr`, index: int,
+        val: `peripheralName _ registerName Val`
+    ) {.inline.} =
+      assert index >= 0 and index.uint32 < dim, "Index out of bounds"
+      let regPtr = cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset + index.uint32 * dimIncrement)
+      volatileStore(regPtr, val)
+
+    proc `[]=`*(
+        _: `peripheralName _ registerName DimPtr`, index: int,
+        val: RegisterVal
+    ) {.inline.} =
+      assert index >= 0 and index.uint32 < dim, "Index out of bounds"
+      let regPtr = cast[ptr RegisterVal](`peripheralName`.uint32 + addressOffset + index.uint32 * dimIncrement)
+      volatileStore(regPtr, val)
+
+    proc write*(regVal: `peripheralName _ registerName Val`) {.inline.} =
+      volatileStore(`peripheralName _ registerName`, regVal)
+
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
   # Extracts a bitfield from regVal, zero extends it to 32 bits.
   # Returns the field value, down-shifted to no bit offset, as a register-distinct type.
@@ -209,9 +278,11 @@ template declareField*(
         regVal, fieldVal, bitOffset, bitWidth
       )
 
+# TODO: declareDimField
+
 macro declareEnum(enumType: untyped, enumPairsStmtList: untyped) {.inject.} =
-  # Declares a Nim enumerator with the given type that is bound to a specific register.
-  # The enum names and values are from the SVD file.
+  ## Declares a Nim enumerator with the given type that is bound to a specific register.
+  ## The enum names and values are from the SVD file.
   enumPairsStmtList.expectKind(nnkStmtList)
   var fields: seq[NimNode]
   for asgnNode in enumPairsStmtList:
