@@ -16376,7 +16376,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
         <value>52</value>
       </interrupt>
       <registers>
-        <!-- BEGIN Ficticious register created for testing only -->
+        <!-- BEGIN Ficticious registers created for testing only -->
         <register>
           <dim>0x2</dim>
           <dimIncrement>0x4</dimIncrement>
@@ -16394,7 +16394,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-        <!-- END Ficticious register created for testing only -->
+        <!-- END Ficticious registers created for testing only -->
         <register>
           <name>SR</name>
           <displayName>SR</displayName>

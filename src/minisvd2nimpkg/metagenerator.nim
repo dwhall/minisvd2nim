@@ -142,6 +142,49 @@ template declareRegister*(
   type `peripheralName _ registerName Val`* {.inject.} = distinct RegisterVal
   declareRegisterBody(peripheralName, registerName, addressOffset, readAccess, writeAccess, registerDesc)
 
+template declareDimRegister*(
+    peripheralName: untyped,
+    registerName: untyped,
+    addressOffset: static uint32,
+    dim: static uint32,
+    dimIncrement: static uint32,
+    readAccess: static bool,
+    writeAccess: static bool,
+    registerDesc: static string
+): untyped =
+  ## A DimRegister or dimensioned register is an array of registers with
+  ## identical fields, only differing by offset from the base.
+  ## We access a DimRegister using square brackets as if it were an array:
+  ##    var r0 = PERIPH.REG[0] # read
+  ##    PERIPH.REG[1] = r1     # write
+  when readAccess:
+    proc `registerName[]`*(
+        base: static `peripheralName Base`,
+        idx: static int
+    ): `peripheralName _ registerName Ptr` {.inline.} =
+      cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset + idx * dimIncrement)
+    proc `registerName[]`*(
+        base: static `peripheralName Base`,
+        idx: int
+    ): `peripheralName _ registerName Ptr` {.inline.} =
+      cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset + idx * dimIncrement)
+
+  when writeAccess:
+    proc `registerName[]=`*(
+        base: static `peripheralName Base`,
+        idx: static int,
+        val: int | `peripheralName _ registerName Val`
+    ) {.inline.} =
+      const reg = cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset + idx * dimIncrement)
+      reg = val
+    proc `registerName[]=`*(
+        base: static `peripheralName Base`,
+        idx: int,
+        val: int | `peripheralName _ registerName Val`
+    ) {.inline.} =
+      let reg = cast[`peripheralName _ registerName Ptr`](`peripheralName`.uint32 + addressOffset + idx * dimIncrement)
+      reg = val
+
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
   # Extracts a bitfield from regVal, zero extends it to 32 bits.
   # Returns the field value, down-shifted to no bit offset, as a register-distinct type.
@@ -208,6 +251,8 @@ template declareField*(
       setField[`peripheralName _ registerName Val`](
         regVal, fieldVal, bitOffset, bitWidth
       )
+
+# TODO: declareDimField
 
 macro declareEnum(enumType: untyped, enumPairsStmtList: untyped) {.inject.} =
   # Declares a Nim enumerator with the given type that is bound to a specific register.
