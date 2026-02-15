@@ -104,11 +104,11 @@ proc renderNimPackageFromParsedSvd*(device, pkgPath, deviceName) =
     renderSeggerPeripherals(pkgPath, device)
 
 proc renderPackageFile(pkgPath, device, deviceName) =
-  let fullVersion = getVersion().strip()
+  let dotVersion = getDotVersion()
   let fileContents = &"""
 #!fmt: off
 
-version       = {fullVersion}  # same as minisvd2nim's version
+version       = {dotVersion}  # same as minisvd2nim's version
 author        = "minisvd2nim (generated)"
 description   = "Device and peripheral modules for the {deviceName}."
 license       = "MIT"
