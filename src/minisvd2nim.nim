@@ -7,7 +7,7 @@ import std/[dirs, files, os, parseopt, paths, strformat, strutils, syncio]
 import minisvd2nimpkg/[parser, renderer, svd_types, versions]
 
 const
-  version = &"version: {getVersion()}\p"
+  version = &"{getVersion()}\p"
   usage = "minisvd2nim [option] [<input.svd>]\p"
   copyright = "Copyright 2024 Dean Hall. See LICENSE.txt for details.\p"
   help =
