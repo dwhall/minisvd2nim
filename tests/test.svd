@@ -16691,19 +16691,19 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitOffset>11</bitOffset>
               <bitWidth>1</bitWidth>
             </field>
-			<field>
+            <field>
               <name>CTSIE</name>
               <description> CTS interrupt enable</description>
               <bitOffset>10</bitOffset>
               <bitWidth>1</bitWidth>
             </field>
-			<field>
+            <field>
               <name>CTSE</name>
               <description> CTS enable</description>
               <bitOffset>9</bitOffset>
               <bitWidth>1</bitWidth>
             </field>
-			<field>
+            <field>
               <name>RTSE</name>
               <description> RTS enable</description>
               <bitOffset>8</bitOffset>
@@ -24208,8 +24208,8 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>1</bitWidth>
             </field>
           </fields>
-        </register>		
-		<register>
+        </register>        
+        <register>
           <name>FS_HCCHAR8</name>
           <displayName>FS_HCCHAR8</displayName>
           <description>OTG_FS host channel-8 characteristics
@@ -25053,7 +25053,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>FS_HCINT8</name>
           <displayName>FS_HCINT8</displayName>
           <description>OTG_FS host channel-8 interrupt
@@ -25380,7 +25380,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>1</bitWidth>
             </field>
           </fields>
-        </register>				
+        </register>                
         <register>
           <name>FS_HCINTMSK0</name>
           <displayName>FS_HCINTMSK0</displayName>
@@ -25988,8 +25988,8 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>1</bitWidth>
             </field>
           </fields>
-        </register>		
-		<register>
+        </register>        
+        <register>
           <name>FS_HCINTMSK8</name>
           <displayName>FS_HCINTMSK8</displayName>
           <description>OTG_FS host channel-8 interrupt mask
@@ -26556,8 +26556,8 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>2</bitWidth>
             </field>
           </fields>
-        </register>				
-		<register>
+        </register>                
+        <register>
           <name>FS_HCTSIZ8</name>
           <displayName>FS_HCTSIZ8</displayName>
           <description>OTG_FS host channel-8 transfer size
@@ -26676,7 +26676,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>2</bitWidth>
             </field>
           </fields>
-        </register>	
+        </register>    
       </registers>
     </peripheral>
     <peripheral>
@@ -44765,7 +44765,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitOffset>0</bitOffset>
               <bitWidth>16</bitWidth>
             </field>
-			<field>
+            <field>
               <name>RLDCTRL</name>
               <description>Reload control</description>
               <bitOffset>16</bitOffset>
@@ -45846,7 +45846,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCCHAR12</name>
           <displayName>OTG_HS_HCCHAR12</displayName>
           <description>OTG_HS host channel-12 characteristics
@@ -45919,7 +45919,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCCHAR13</name>
           <displayName>OTG_HS_HCCHAR13</displayName>
           <description>OTG_HS host channel-13 characteristics
@@ -45992,7 +45992,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCCHAR14</name>
           <displayName>OTG_HS_HCCHAR14</displayName>
           <description>OTG_HS host channel-14 characteristics
@@ -46065,7 +46065,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCCHAR15</name>
           <displayName>OTG_HS_HCCHAR15</displayName>
           <description>OTG_HS host channel-15 characteristics
@@ -46641,8 +46641,8 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>1</bitWidth>
             </field>
           </fields>
-        </register>		
-		<register>
+        </register>        
+        <register>
           <name>OTG_HS_HCSPLT12</name>
           <displayName>OTG_HS_HCSPLT12</displayName>
           <description>OTG_HS host channel-12 split control
@@ -46684,7 +46684,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCSPLT13</name>
           <displayName>OTG_HS_HCSPLT13</displayName>
           <description>OTG_HS host channel-13 split control
@@ -46726,7 +46726,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCSPLT14</name>
           <displayName>OTG_HS_HCSPLT14</displayName>
           <description>OTG_HS host channel-14 split control
@@ -46768,7 +46768,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCSPLT15</name>
           <displayName>OTG_HS_HCSPLT15</displayName>
           <description>OTG_HS host channel-15 split control
@@ -47781,7 +47781,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCINT12</name>
           <displayName>OTG_HS_HCINT12</displayName>
           <description>OTG_HS host channel-12 interrupt
@@ -47863,7 +47863,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCINT13</name>
           <displayName>OTG_HS_HCINT13</displayName>
           <description>OTG_HS host channel-13 interrupt
@@ -47945,7 +47945,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCINT14</name>
           <displayName>OTG_HS_HCINT14</displayName>
           <description>OTG_HS host channel-14 interrupt
@@ -48027,7 +48027,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCINT15</name>
           <displayName>OTG_HS_HCINT15</displayName>
           <description>OTG_HS host channel-15 interrupt
@@ -48108,7 +48108,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>1</bitWidth>
             </field>
           </fields>
-        </register>		
+        </register>        
         <register>
           <name>OTG_HS_HCINTMSK0</name>
           <displayName>OTG_HS_HCINTMSK0</displayName>
@@ -49093,7 +49093,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCINTMSK12</name>
           <displayName>OTG_HS_HCINTMSK12</displayName>
           <description>OTG_HS host channel-12 interrupt mask
@@ -49175,7 +49175,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCINTMSK13</name>
           <displayName>OTG_HS_HCINTMSK13</displayName>
           <description>OTG_HS host channel-13 interrupt mask
@@ -49257,7 +49257,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCINTMSK14</name>
           <displayName>OTG_HS_HCINTMSK14</displayName>
           <description>OTG_HS host channel-14 interrupt mask
@@ -49339,7 +49339,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCINTMSK15</name>
           <displayName>OTG_HS_HCINTMSK15</displayName>
           <description>OTG_HS host channel-15 interrupt mask
@@ -49420,7 +49420,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>1</bitWidth>
             </field>
           </fields>
-        </register>		
+        </register>        
         <register>
           <name>OTG_HS_HCTSIZ0</name>
           <displayName>OTG_HS_HCTSIZ0</displayName>
@@ -49780,8 +49780,8 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>2</bitWidth>
             </field>
           </fields>
-        </register>		
-		<register>
+        </register>        
+        <register>
           <name>OTG_HS_HCTSIZ12</name>
           <displayName>OTG_HS_HCTSIZ12</displayName>
           <description>OTG_HS host channel-12 transfer size
@@ -49811,7 +49811,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCTSIZ13</name>
           <displayName>OTG_HS_HCTSIZ13</displayName>
           <description>OTG_HS host channel-13 transfer size
@@ -49841,7 +49841,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCTSIZ14</name>
           <displayName>OTG_HS_HCTSIZ14</displayName>
           <description>OTG_HS host channel-14 transfer size
@@ -49871,7 +49871,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCTSIZ15</name>
           <displayName>OTG_HS_HCTSIZ15</displayName>
           <description>OTG_HS host channel-15 transfer size
@@ -49900,7 +49900,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>2</bitWidth>
             </field>
           </fields>
-        </register>		
+        </register>        
         <register>
           <name>OTG_HS_HCDMA0</name>
           <displayName>OTG_HS_HCDMA0</displayName>
@@ -50116,8 +50116,8 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <bitWidth>32</bitWidth>
             </field>
           </fields>
-        </register>		
-		<register>
+        </register>        
+        <register>
           <name>OTG_HS_HCDMA12</name>
           <displayName>OTG_HS_HCDMA12</displayName>
           <description>OTG_HS host channel-12 DMA address
@@ -50135,7 +50135,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCDMA13</name>
           <displayName>OTG_HS_HCDMA13</displayName>
           <description>OTG_HS host channel-13 DMA address
@@ -50153,7 +50153,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCDMA14</name>
           <displayName>OTG_HS_HCDMA14</displayName>
           <description>OTG_HS host channel-14 DMA address
@@ -50171,7 +50171,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
             </field>
           </fields>
         </register>
-		<register>
+        <register>
           <name>OTG_HS_HCDMA15</name>
           <displayName>OTG_HS_HCDMA15</displayName>
           <description>OTG_HS host channel-15 DMA address

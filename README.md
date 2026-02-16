@@ -1,11 +1,13 @@
 # minisvd2nim
 
 [minisvd2nim](github.com/dwhall/minisvd2nim) is a command line tool
-that processes one SVD file as input and renders declarative nim
-source to a nimble package.  The declarations invoke templates and
-macros during compilation of the application.  This way, a programmer
-can change metagenerator to improve the resulting code instead of
-changing and recompiling the minisvd2nim binary.
+that processes one
+[SVD file](https://arm-software.github.io/CMSIS_5/SVD/html/index.html)
+as input and renders declarative nim source to a nimble package.
+The declarations invoke templates and macros during compilation of
+the application.  This way, a programmer can change metagenerator to
+improve the resulting code instead of changing and recompiling
+the minisvd2nim binary.
 
                                            ┌──────────────────────┐
                                            │                      │
@@ -17,7 +19,7 @@ changing and recompiling the minisvd2nim binary.
                                                      │
     ┌──────────────────────┐               ┌─────────┴────────────┐
     │                      │  minisvd2nim  │                      │┐
-    │   Device .svd file   │    renders    │    device package    ││
+    │   device .svd file   │    renders    │    device package    ││
     │                      ├───────────────►                      ││
     └──────────────────────┘               └┬────────▲────────────┘│
                                             └────────┼─────────────┘
@@ -25,7 +27,7 @@ changing and recompiling the minisvd2nim binary.
                                                      │
                                            ┌─────────┴────────────┐
                                            │                      │
-                                           │   User application   │
+                                           │   user application   │
                                            │     .nim source      │
                                            │                      │
                                            └──────────────────────┘
