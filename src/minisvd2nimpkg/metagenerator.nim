@@ -212,9 +212,9 @@ template declareDimRegister*(
       volatileStore(`peripheralName _ registerName`, regVal)
 
 func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.inline.} =
-  # Extracts a bitfield from regVal, zero extends it to 32 bits.
-  # Returns the field value, down-shifted to no bit offset, as a register-distinct type.
-  # Employs the Unsigned Bit Field eXtract instruction, UBFX, when the target supports it.
+  ## Extracts a bitfield from regVal, zero extends it to 32 bits.
+  ## Returns the field value, down-shifted to no bit offset, as a register-distinct type.
+  ## Employs the Unsigned Bit Field eXtract instruction, UBFX, when the target supports it.
   assert bitOffset >= 0, "bitOffset must not be negative"
   assert bitWidth > 0, "bitWidth must be greater than zero"
   assert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
@@ -228,12 +228,26 @@ func getField[T](regVal: T, bitOffset: static int, bitWidth: static int): T {.in
     r = r shr bitOffset
     r.T
 
+func getField[T](regVal: T, bitOffset: int, bitWidth: int): T {.inline.} =
+  ## Extracts a bitfield from regVal, zero extends it to 32 bits.
+  ## Returns the field value, down-shifted to no bit offset, as a register-distinct type.
+  ## When the arguments are not static, we perform the bit manipulation manually.
+  assert bitOffset >= 0, "bitOffset must not be negative"
+  assert bitWidth > 0, "bitWidth must be greater than zero"
+  assert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
+  let bitEnd = bitOffset + bitWidth - 1
+  let bitMask = toMask[uint32](bitOffset .. bitEnd)
+  var r = regVal.RegisterVal
+  r = r and bitMask
+  r = r shr bitOffset
+  r.T
+
 func setField[T](
     regVal: T, fieldVal: RegisterVal, bitOffset: static int, bitWidth: static int
 ): T {.inline.} =
-  # Replaces width bits in regVal starting at the low bit position bitOffset,
-  # with bitWidth bits from fieldVal starting at bit[0]. Other bits in regVal are unchanged.
-  # Employs the ARMv7 Bit Field Insert instruction, BFI, when the target supports it.
+  ## Replaces width bits in regVal starting at the low bit position bitOffset,
+  ## with bitWidth bits from fieldVal starting at bit[0]. Other bits in regVal are unchanged.
+  ## Employs the ARMv7 Bit Field Insert instruction, BFI, when the target supports it.
   assert bitOffset >= 0, "bitOffset must not be negative"
   assert bitWidth > 0, "bitWidth must be greater than zero"
   assert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
@@ -247,6 +261,20 @@ func setField[T](
     r = r and bitnot(bitMask)
     r = r or ((fieldVal shl bitOffset) and bitMask)
     r.T
+
+func setField[T](regVal: T, fieldVal: RegisterVal, bitOffset: int, bitWidth: int): T {.inline.} =
+  ## Replaces width bits in regVal starting at the low bit position bitOffset,
+  ## with bitWidth bits from fieldVal starting at bit[0]. Other bits in regVal are unchanged.
+  ## When the arguments are not static, we perform the bit manipulation manually.
+  assert bitOffset >= 0, "bitOffset must not be negative"
+  assert bitWidth > 0, "bitWidth must be greater than zero"
+  assert (bitOffset + bitWidth) <= 32, "bit field must not exceed register size in bits"
+  let bitEnd = bitOffset + bitWidth - 1
+  let bitMask = toMask[uint32](bitOffset .. bitEnd)
+  var r = regVal.RegisterVal
+  r = r and bitnot(bitMask)
+  r = r or ((fieldVal shl bitOffset) and bitMask)
+  r.T
 
 template declareField*(
     peripheralName: untyped,
@@ -278,7 +306,60 @@ template declareField*(
         regVal, fieldVal, bitOffset, bitWidth
       )
 
-# TODO: declareDimField
+template declareDimField*(
+    peripheralName: untyped,
+    registerName: untyped,
+    fieldName: untyped,
+    dim: static int,
+    dimIncrement: static int,
+    readAccess: static bool,
+    writeAccess: static bool,
+    fieldDesc: static string,
+) =
+  type
+    `peripheralName _ registerName _ fieldName Val`* {.inject.} =
+      `peripheralName _ registerName Val`
+
+  template `fieldName`*(
+      regVal: `peripheralName _ registerName Val`
+  ): `peripheralName _ registerName Val` =
+    cast[`peripheralName _ registerName _ fieldName Val`](regVal)
+
+  when readAccess:
+    template `[]`*(
+        regVal: `peripheralName _ registerName _ fieldName Val`, index: static int
+    ): `peripheralName _ registerName _ fieldName Val` =
+      when not (index >= 0 and index < dim): "Index out of bounds"
+      const bitOffset = index * dimIncrement
+      const bitWidth = dimIncrement
+      getField[`peripheralName _ registerName _ fieldName Val`](regVal, bitOffset, bitWidth)
+
+    template `[]`*(
+        regVal: `peripheralName _ registerName _ fieldName Val`, index: int
+    ): `peripheralName _ registerName _ fieldName Val` =
+      assert index >= 0 and index < dim, "Index out of bounds"
+      let bitOffset = index * dimIncrement
+      let bitWidth = dimIncrement
+      getField[`peripheralName _ registerName _ fieldName Val`](regVal, bitOffset, bitWidth)
+
+  when writeAccess:
+    template `[]=`*(
+        regVal: `peripheralName _ registerName _ fieldName Val`, index: static int, fieldVal: uint32
+    ): `peripheralName _ registerName _ fieldName Val` =
+      when not (index >= 0 and index < dim): "Index out of bounds"
+      const bitOffset = index * dimIncrement
+      const bitWidth = dimIncrement
+      setField[`peripheralName _ registerName _ fieldName Val`](
+        regVal, fieldVal, bitOffset, bitWidth
+      )
+
+    template `[]=`*(
+        regVal: `peripheralName _ registerName _ fieldName Val`, index: int, fieldVal: uint32
+    ): `peripheralName _ registerName _ fieldName Val` =
+      assert index >= 0 and index.uint32 < dim, "Index out of bounds"
+      let bitOffset = index * dimIncrement
+      let bitWidth = dimIncrement
+      setField[`peripheralName _ registerName _ fieldName Val`](regVal, fieldVal, bitOffset, bitWidth)
 
 macro declareEnum(enumType: untyped, enumPairsStmtList: untyped) {.inject.} =
   ## Declares a Nim enumerator with the given type that is bound to a specific register.

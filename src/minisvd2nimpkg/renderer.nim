@@ -261,6 +261,13 @@ func isDimensioned(el: SvdElementValue): bool =
   el.getElement("dim") != nilElementValue and
     el.getElement("dimIncrement") != nilElementValue
 
+func stripDimName(dimName: string): string =
+  ## Strips the dimension pattern from a register or field name.
+  ## For example, "DEVICEID[%s]" becomes "DEVICEID".
+  result = dimName.replace("[%s]", "%s") # order is important
+                  .replace("_%s", "%s")
+                  .replace("%s", "")
+
 proc renderRegister(outf, device, peripheral, register) =
   let peripheralName = peripheral.getElement("name").value
   var registerName = register.getElement("name").value
@@ -277,9 +284,7 @@ proc renderRegister(outf, device, peripheral, register) =
     let dim = parseAnyInt(register.getElement("dim").value)
     let dimIncrement = parseAnyInt(register.getElement("dimIncrement").value)
     let addressOffsetVal = parseAnyInt(addressOffset)
-    var registerNameStripped = registerName.replace("[%s]", "%s")
-    registerNameStripped = registerNameStripped.replace("_%s", "%s")
-    registerNameStripped = registerNameStripped.replace("%s", "")
+    let registerNameStripped = stripDimName(registerName)
     outf.write(
       &"declareDimRegister(peripheralName = {peripheralName}, registerName = {registerNameStripped}, addressOffset = 0x{addressOffsetVal.toHex}'u32, dim = {dim}, dimIncrement = {dimIncrement}, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"
     )
@@ -343,8 +348,6 @@ proc renderField(outf, device, peripheral, registerName, register, field) =
     stderr.write(
       &"Warning: field {peripheral.getElement(\"name\").value}.{register.getElement(\"name\").value}.{field.getElement(\"name\").value} has derivedFrom attribute, which is not yet supported.\p"
     )
-  let isDimensioned = field.getElement("dim") != nilElementValue and
-    field.getElement("dimIncrement") != nilElementValue
   let peripheralName = peripheral.getElement("name").value
   const fieldNameReplacements = [ # Order is important
     (", ", "_"),
@@ -358,18 +361,13 @@ proc renderField(outf, device, peripheral, registerName, register, field) =
   let (bitOffset, bitWidth) = computeFieldBitRange(field)
   let fieldAccess = getAccess(addr device, addr peripheral, addr register, addr field)
   let description = field.getElement("description").value.removeWhitespace()
-  if isDimensioned:
+  if field.isDimensioned:
     let dim = parseAnyInt(field.getElement("dim").value)
     let dimIncrement = parseAnyInt(field.getElement("dimIncrement").value)
-    var bitOffsetVal = parseAnyInt(bitOffset)
-    fieldName = fieldName.replace("[%s]", "%s")
-    var fieldNameFmt = fieldName.replace("%s", "$1")
-    for i in 0 ..< dim:
-      fieldName = `%`(fieldNameFmt, $i)
-      outf.write(
-        &"declareField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffsetVal}, bitWidth = {bitWidth}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
-      )
-      bitOffsetVal += dimIncrement
+    let fieldNameStripped = stripDimName(fieldName)
+    outf.write(
+      &"declareDimField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldNameStripped}, dim = {dim}, dimIncrement = {dimIncrement}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
+    )
   else:
     outf.write(
       &"declareField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffset}, bitWidth = {bitWidth}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"

@@ -16758,6 +16758,36 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
         <value>53</value>
       </interrupt>
     </peripheral>
+    <!-- BEGIN Ficticious peripheral created for testing only -->
+    <peripheral>
+      <name>UART6</name>
+      <baseAddress>0x40006000</baseAddress>
+      <interrupt>
+        <name>UART6</name>
+        <description>UART6 global interrupt</description>
+        <value>63</value>
+      </interrupt>
+      <registers>
+        <register>
+          <dim>0x2</dim>
+          <dimIncrement>0x4</dimIncrement>
+          <name>GPIO</name>
+          <description>gpio in a uart?  nonsense!</description>
+          <addressOffset>0x060</addressOffset>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          <fields>
+            <field>
+              <name>FLAG[%s]</name>
+              <description>fake field for testing purposes</description>
+              <dim>32</dim>
+              <dimIncrement>1</dimIncrement>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <!-- END Ficticious peripheral created for testing only -->
     <peripheral>
       <name>C_ADC</name>
       <description>Common ADC registers</description>

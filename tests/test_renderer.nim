@@ -108,6 +108,13 @@ suite "Test the renderer.":
     check "declareField(peripheralName = UART5, registerName = DEVICEID, fieldName = DEVICETYPE, bitOffset = 0, bitWidth = 32" in
       modFile
 
+  test "the renderer SHOULD output a dimensioned field declaration":
+    # The SVD file is instrumented to have UART6.GPIO.FLAG[%s] with dim = 32, dimIncrement = 1
+    let modPath = pkgPath / Path("uart.nim")
+    let modFile = readFile(modPath.string)
+    check "declareDimField(peripheralName = UART6, registerName = GPIO, fieldName = FLAG, dim = 32, dimIncrement = 1, readAccess = true, writeAccess = true, fieldDesc = " in
+      modFile
+
   # Teardown:
   removeDir(tempPath.string)
 
