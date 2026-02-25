@@ -56,7 +56,6 @@ proc renderLicense(pkgPath)
 proc renderDevice(pkgPath, device)
 proc renderCpu(outf, device)
 proc renderPeripherals(pkgPath, device)
-proc renderSeggerPeripherals(pkgPath, device)
 proc renderPeripheral(outf, device, peripheral)
 proc renderInterrupt(outf, device, peripheral, interrupt)
 proc renderRegister(outf, device, peripheral, register)
@@ -98,10 +97,7 @@ proc renderNimPackageFromParsedSvd*(device, pkgPath, deviceName) =
   renderPackageFile(pkgPath, device, deviceName)
   renderReadme(pkgPath, device)
   renderLicense(pkgPath)
-  if not device.isSeggerVariant:
-    renderDevice(pkgPath, device)
-  else:
-    renderSeggerPeripherals(pkgPath, device)
+  renderDevice(pkgPath, device)
 
 proc renderPackageFile(pkgPath, device, deviceName) =
   let dotVersion = getDotVersion()
@@ -217,29 +213,6 @@ proc renderPeripherals(pkgPath, device) =
     outf.renderPeripheral(device, p)
     outf.close()
     periphFileSet.incl(lowerPeriphName)
-
-proc renderSeggerPeripherals(pkgPath, device) =
-  ## Write distinct peripherals to their own module.
-  ## Write enumerated peripherals to a common module
-  ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
-  var outf: File
-  var periphFileSet = initHashSet[string]()
-  for _,g in device.getElement("cpu").getElement("groups").elements.pairs:
-    if g.getElement("name").value.toLower() != "peripherals":
-      continue
-    for _,p in g.getElement("peripherals").elements.pairs:
-      assert p.name == "peripheral"
-      let lowerPeriphName = getPeripheralBaseName(p).toLower
-      let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
-      let overwriteTheFile = lowerPeriphName notin periphFileSet
-      let mode = if overwriteTheFile: fmWrite else: fmAppend
-      assert outf.open(periphModule.string, mode)
-      if overwriteTheFile:
-        outf.write(importMetaGeneratorHeader)
-        outf.write("#!fmt: off\n")
-      outf.renderPeripheral(device, p)
-      outf.close()
-      periphFileSet.incl(lowerPeriphName)
 
 func getPeripheralBaseName(p: SvdElementValue): string =
   ## Removes digits from the tail of the peripheral's name.

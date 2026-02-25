@@ -9,7 +9,7 @@
 
 import std/[paths, strformat, tables, xmlparser, xmltree]
 
-import svd_types, svd_spec, segger_spec
+import svd_types, svd_spec
 
 func addIfNotNil(elVals: var OrderedTable[string, SvdElementValue], el: SvdElementValue) =
   if el != nilElementValue:
@@ -64,16 +64,4 @@ proc parseSvdFile*(fn: Path): tuple[device: SvdElementValue, deviceName: string]
   assert xml.tag == "device"
   let device = parseSvdElement(xml, fileSpec)
   let deviceName = device.getElement("name").value
-  result = (device, deviceName)
-
-func parseSeggerElement(xml: XmlNode, spec: SvdElementSpec): SvdElementValue =
-  result = parseSvdElement(xml, spec)
-  result.isSeggerVariant = true
-
-proc parseSeggerFile*(fn: Path): tuple[device: SvdElementValue, deviceName: string] =
-  const fileSpec = getSeggerSpec("device")
-  let xml = loadXml(fn.string)
-  assert xml.tag == "device"
-  let device = parseSeggerElement(xml, fileSpec)
-  let deviceName = device.getElement("cpu").getElement("name").value
   result = (device, deviceName)

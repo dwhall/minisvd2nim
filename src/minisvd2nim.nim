@@ -20,12 +20,11 @@ Usage:
 Options:
   -f / --force          force overwrite of existing output directory
   -o / --output=<path>  set the output path where the device package is written
-  -s / --segger         parse Segger non-compliant .svd-like format
   -v / --version        show the version
   --help                show this help
 """
 
-proc parseArgs(): tuple[fn: Path, outPath: Path, isSegger: bool, forceOverwrite: bool]
+proc parseArgs(): tuple[fn: Path, outPath: Path, forceOverwrite: bool]
 proc validateArgs(fn: Path, outPath: Path)
 proc processPackage(device: SvdElementValue, outPath: Path, deviceName: string, forceOverwrite: bool)
 proc preparePackageDir(pkgPath: Path, forceOverwrite: bool)
@@ -34,21 +33,18 @@ proc copyMetageneratorFileToPackage(pkgPath: Path)
 
 proc main() =
   try:
-    let (fn, outPath, isSegger, forceOverwrite) = parseArgs()
+    let (fn, outPath, forceOverwrite) = parseArgs()
     validateArgs(fn, outPath)
-    let (device, deviceName) =
-      if isSegger: parseSeggerFile(fn)
-      else: parseSvdFile(fn)
+    let (device, deviceName) = parseSvdFile(fn)
     processPackage(device, outPath, deviceName, forceOverwrite)
   except IOError as e:
     writeMsgAndQuit(stdout, "Error: " & e.msg & "\n" & usage)
 
-proc parseArgs(): tuple[fn: Path, outPath: Path, isSegger: bool, forceOverwrite: bool] =
+proc parseArgs(): tuple[fn: Path, outPath: Path, forceOverwrite: bool] =
   ## Returns only if a proper combination of arguments are given;
   ## otherwise it prints a message and exits
   var fn: Path
   var outPath = paths.getCurrentDir()
-  var isSegger = false
   var forceOverwrite = false
   for kind, key, val in getopt():
     case kind
@@ -60,15 +56,13 @@ proc parseArgs(): tuple[fn: Path, outPath: Path, isSegger: bool, forceOverwrite:
         outPath = absolutePath(Path(val))
       of "force", "f":
         forceOverwrite = true
-      of "segger", "s":
-        isSegger = true
       else:
         writeMsgAndQuit(stdout, help)
     of cmdArgument:
       fn = absolutePath(Path(key))
     of cmdEnd:
       break
-  return (fn, outPath, isSegger, forceOverwrite)
+  return (fn, outPath, forceOverwrite)
 
 proc writeMsgAndQuit(outFile: File, msg: string, errorCode: int = QuitFailure) =
   outFile.write(msg)

@@ -108,23 +108,6 @@ suite "Test the renderer.":
     check "declareField(peripheralName = UART5, registerName = DEVICEID, fieldName = DEVICETYPE, bitOffset = 0, bitWidth = 32" in
       modFile
 
-  test "removeAbsolutePath SHOULD remove absolute path":
-    var params = @["--force", "--segger", "D:\\code\\nim\\arm_cores\\src\\segger\\Cortex-M23.svd"]
-    let cwd = "D:\\code\\nim\\arm_cores\\"
-    params.removeAbsolutePath(cwd)
-    check "D:\\code\\nim\\arm_cores\\src\\segger\\Cortex-M23.svd" notin params
-    check "src\\segger\\Cortex-M23.svd" in params
-
-  test "removeAbsolutePath SHOULD NOT modify a mismatched path":
-    var params = @["--force", "--segger", "D:\\code\\nim\\arm_cores\\src\\segger\\Cortex-M23.svd"]
-    params.removeAbsolutePath("C:\\code\\nim\\arm_cores\\")
-    check "D:\\code\\nim\\arm_cores\\src\\segger\\Cortex-M23.svd" in params
-
-  test "removeAbsolutePath SHOULD NOT modify a non-absolute path":
-    var params = @["--force", "--segger", "D:\\code\\nim\\arm_cores\\src\\segger\\Cortex-M23.svd"]
-    params.removeAbsolutePath("code\\nim\\arm_cores\\")
-    check "D:\\code\\nim\\arm_cores\\src\\segger\\Cortex-M23.svd" in params
-
   # Teardown:
   removeDir(tempPath.string)
 
