@@ -165,19 +165,22 @@ func getElementValue(el: SvdElementValue, elName: string): string =
     elVal
 
 proc renderDevice(pkgPath, device) =
-  let fn = pkgPath / Path("device.nim")
-  var outf: File
-  assert outf.open(fn.string, fmWrite)
-  defer:
-    outf.close()
   let deviceName = device.getElement("name").value
   let svdFileVersion = device.getElement("version").value
   let description = device.getElement("description").value
-  outf.write(
-    importMetaGeneratorHeader & &"#!fmt: off\n" &
-      &"declareDevice(deviceName = {deviceName}, svdFileVersion = \"{svdFileVersion}\", description = \"{description}\")\p"
-  )
-  renderCpu(outf, device)
+  # Only output a device file (with cpu info) if these fields are present.
+  # Core SVD files do not have these fields and should not render a device file.
+  if svdFileVersion.len > 0 or description.len > 0:
+    let fn = pkgPath / Path("device.nim")
+    var outf: File
+    assert outf.open(fn.string, fmWrite)
+    defer:
+      outf.close()
+    outf.write(
+      importMetaGeneratorHeader & &"#!fmt: off\n" &
+        &"declareDevice(deviceName = {deviceName}, svdFileVersion = \"{svdFileVersion}\", description = \"{description}\")\p"
+    )
+    renderCpu(outf, device)
   renderPeripherals(pkgPath, device)
 
 proc renderCpu(outf, device) =
