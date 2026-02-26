@@ -53,7 +53,7 @@ import metagenerator
 proc renderPackageFile(pkgPath, device, deviceName)
 proc renderReadme(pkgPath, device)
 proc renderLicense(pkgPath)
-proc renderDevice(pkgPath, device)
+proc renderDevice(pkgPath, device, deviceName)
 proc renderCpu(outf, device)
 proc renderPeripherals(pkgPath, device)
 proc renderPeripheral(outf, device, peripheral)
@@ -97,7 +97,7 @@ proc renderNimPackageFromParsedSvd*(device, pkgPath, deviceName) =
   renderPackageFile(pkgPath, device, deviceName)
   renderReadme(pkgPath, device)
   renderLicense(pkgPath)
-  renderDevice(pkgPath, device)
+  renderDevice(pkgPath, device, deviceName)
 
 proc renderPackageFile(pkgPath, device, deviceName) =
   let dotVersion = getDotVersion()
@@ -164,8 +164,7 @@ func getElementValue(el: SvdElementValue, elName: string): string =
   else:
     elVal
 
-proc renderDevice(pkgPath, device) =
-  let deviceName = device.getElement("name").value
+proc renderDevice(pkgPath, device, deviceName) =
   let svdFileVersion = device.getElement("version").value
   let description = device.getElement("description").value
   # Only output a device file (with cpu info) if these fields are present.
