@@ -182,6 +182,8 @@ proc renderDevice(pkgPath, device) =
 
 proc renderCpu(outf, device) =
   let cpu = device.getElement("cpu")
+  if cpu == nilElementValue:  # the cpu element is optional
+    return
   let cpuName = cpu.getElement("name").value
   let revision = cpu.getElement("revision").value
   let endian = cpu.getElement("endian").value
