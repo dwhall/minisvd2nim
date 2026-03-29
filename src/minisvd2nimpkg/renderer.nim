@@ -367,11 +367,11 @@ proc renderField(outf, device, peripheral, registerName, register, field) =
     let dimIncrement = parseAnyInt(field.getElement("dimIncrement").value)
     let fieldNameStripped = stripDimName(fieldName)
     outf.write(
-      &"declareDimField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldNameStripped}, dim = {dim}, dimIncrement = {dimIncrement}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
+      &"declareField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldNameStripped}, bitOffset = {bitOffset}, bitWidth = {bitWidth}, dim = {dim}, dimIncrement = {dimIncrement}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
     )
   else:
     outf.write(
-      &"declareField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffset}, bitWidth = {bitWidth}, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
+      &"declareField(peripheralName = {peripheralName}, registerName = {registerName}, fieldName = {fieldName}, bitOffset = {bitOffset}, bitWidth = {bitWidth}, dim = 0, dimIncrement = 0, readAccess = {readAccess(fieldAccess)}, writeAccess = {writeAccess(fieldAccess)}, fieldDesc = \"{description}\")\p"
     )
   # FIXME: enum's fieldName only matches with non-dimensioned fields
   let enumElements = field.getElement("enumeratedValues").elements

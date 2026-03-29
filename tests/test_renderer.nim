@@ -16,7 +16,9 @@ suite "Test the renderer.":
   let pkgPath = tempPath / Path(deviceName.toLower())
   createDir(pkgPath)
   renderNimPackageFromParsedSvd(device, pkgPath, deviceName)
-  let metagenPath = paths.getCurrentDir() / Path("src") / Path("minisvd2nimpkg") / Path("metagenerator.nim")
+  let metagenPath =
+    paths.getCurrentDir() / Path("src") / Path("minisvd2nimpkg") /
+    Path("metagenerator.nim")
   copyFileToDir(metagenPath.string, pkgPath.string)
 
   test "there SHOULD be a procedure to render nim source":
@@ -28,12 +30,12 @@ suite "Test the renderer.":
   test "the renderer SHOULD output a package LICENSE":
     check fileExists(pkgPath / Path("LICENSE.txt"))
 
-# TODO: (see renderer.nim:283)
-#  test "the renderer SHOULD declare a field that is derivedFrom another register":
-#    # In test.svd DCMI.CR2 was instrumented with drivesFrom DCMI.CR which has a field CAPTURE
-#    let modPath = pkgPath / Path("dcmi.nim")
-#    let modFile = readFile(modPath.string)
-#    check "declareField(peripheralName = DCMI, registerName = CR2, fieldName = CAPTURE" in modFile
+  # TODO: (see renderer.nim:283)
+  #  test "the renderer SHOULD declare a field that is derivedFrom another register":
+  #    # In test.svd DCMI.CR2 was instrumented with drivesFrom DCMI.CR which has a field CAPTURE
+  #    let modPath = pkgPath / Path("dcmi.nim")
+  #    let modFile = readFile(modPath.string)
+  #    check "declareField(peripheralName = DCMI, registerName = CR2, fieldName = CAPTURE" in modFile
 
   # TODO:
   # test "the renderer SHOULD declare a field that is derivedFrom another peripheral":
@@ -110,7 +112,7 @@ suite "Test the renderer.":
     # The SVD file is instrumented to have UART6.GPIO.FLAG[%s] with dim = 32, dimIncrement = 1
     let modPath = pkgPath / Path("uart.nim")
     let modFile = readFile(modPath.string)
-    check "declareDimField(peripheralName = UART6, registerName = GPIO, fieldName = FLAG, dim = 32, dimIncrement = 1, readAccess = true, writeAccess = true, fieldDesc = " in
+    check "declareField(peripheralName = UART6, registerName = GPIO, fieldName = FLAG, bitOffset = 0, bitWidth = 1, dim = 32, dimIncrement = 1, readAccess = true, writeAccess = true, fieldDesc = " in
       modFile
 
   # Teardown:
@@ -118,7 +120,8 @@ suite "Test the renderer.":
 
 suite "regression tests":
   # setup:
-  let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_render_regressions")
+  let tempDir =
+    createTempDir(prefix = "minisvd2nim", suffix = "test_render_regressions")
   let tempPath = Path(tempDir)
   let pkgPath = tempPath
   let fnTest = paths.getCurrentDir() / Path("tests") / Path("test_small.svd")
