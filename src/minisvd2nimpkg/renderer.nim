@@ -24,6 +24,7 @@
 ## The resulting Nimble-compliant package may be installed like any other package
 ## or added to a project as a dependency in source form.
 ##
+#!fmt: off
 
 import std/[algorithm, os, paths, sets, strformat, strutils, tables]
 
@@ -204,7 +205,7 @@ proc renderPeripherals(pkgPath, device) =
   ## (e.g. SPI1, SPI2, SPIn are written to spi.nim).
   var outf: File
   var periphFileSet = initHashSet[string]()
-  for _,p in device.getElement("peripherals").elements.pairs:
+  for _, p in device.getElement("peripherals").elements.pairs:
     assert p.name == "peripheral"
     let lowerPeriphName = getPeripheralBaseName(p).toLower
     let periphModule = pkgPath / Path(lowerPeriphName).addFileExt("nim")
@@ -286,13 +287,13 @@ proc renderRegister(outf, device, peripheral, register) =
     let addressOffsetVal = parseAnyInt(addressOffset)
     let registerNameStripped = stripDimName(registerName)
     outf.write(
-      &"declareDimRegister(peripheralName = {peripheralName}, registerName = {registerNameStripped}, addressOffset = 0x{addressOffsetVal.toHex}'u32, dim = {dim}, dimIncrement = {dimIncrement}, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"
+      &"declareRegister(peripheralName = {peripheralName}, registerName = {registerNameStripped}, addressOffset = 0x{addressOffsetVal.toHex}'u32, dim = {dim}, dimIncrement = {dimIncrement}, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"
     )
     for _, field in register.getElement("fields").elements.pairs:
       renderField(outf, device, peripheral, registerNameStripped, register, field)
   else:
     outf.write(
-      &"declareRegister(peripheralName = {peripheralName}, registerName = {registerName}, addressOffset = {addressOffset}'u32, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"
+      &"declareRegister(peripheralName = {peripheralName}, registerName = {registerName}, addressOffset = {addressOffset}'u32, dim = 0, dimIncrement = 0, readAccess = {readAccess(registerAccess)}, writeAccess = {writeAccess(registerAccess)}, registerDesc = \"{description}\"{derivedFromSnippet})\p"
     )
     for _, field in register.getElement("fields").elements.pairs:
       renderField(outf, device, peripheral, registerName, register, field)

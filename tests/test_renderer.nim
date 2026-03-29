@@ -8,7 +8,6 @@ proc quoteWrap(s: string): string =
   "\"" & s & "\""
 
 suite "Test the renderer.":
-
   # setup:
   let tempDir = createTempDir(prefix = "minisvd2nim", suffix = "test_renderer")
   let tempPath = Path(tempDir)
@@ -40,7 +39,6 @@ suite "Test the renderer.":
   # test "the renderer SHOULD declare a field that is derivedFrom another peripheral":
   # test "the renderer SHOULD declare a register that is derivedFrom another register":
   # test "the renderer SHOULD output enum values": # needs mods to .svd file
-
 
   test "the renderer SHOULD output peripheral modules":
     # check the first, last and a few other peripherals
@@ -91,7 +89,7 @@ suite "Test the renderer.":
     # The SVD file is instrumented to have UART4.DEVICEID[%s] with dim = 0x2, dimIncrement = 0x4
     let modPath = pkgPath / Path("uart.nim")
     let modFile = readFile(modPath.string)
-    check "declareDimRegister(peripheralName = UART4, registerName = DEVICEID, addressOffset = 0x00000060'u32, dim = 2, dimIncrement = 4, readAccess = true, writeAccess = false" in
+    check "declareRegister(peripheralName = UART4, registerName = DEVICEID, addressOffset = 0x00000060'u32, dim = 2, dimIncrement = 4, readAccess = true, writeAccess = false" in
       modFile
 
   test "the renderer SHOULD output fields of a dimensioned register":
