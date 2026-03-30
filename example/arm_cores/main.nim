@@ -7,7 +7,7 @@ import cm4f/[nvic, scb]
 proc main() =
   let i0 = NVIC.NVIC_ISER[0]
   NVIC.NVIC_ISER[1] = i0
-  var idx = 2
+  var idx = 2'u8
   var i2 = NVIC.NVIC_ISER[idx]
   NVIC.NVIC_ISER[idx] = i2.uint32 + 0x42'u32
 

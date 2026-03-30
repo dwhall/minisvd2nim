@@ -29,7 +29,7 @@ type RegisterVal = uint32
 
 template declarePeripheral*(peripheralName: untyped, baseAddress: static uint32, peripheralDesc: static string): untyped =
   type `peripheralName _ BaseAddr` {.inject.} = distinct RegisterVal
-  const `peripheralName` = `peripheralName _ BaseAddr`(baseAddress)
+  const peripheralName* {.inject.} = `peripheralName _ BaseAddr`(baseAddress)
 
 template declareInterrupt*(peripheralName: untyped, interruptName: untyped, interruptValue: static int, interruptDesc: static string, ): untyped =
   const `irq _ interruptName`* {.inject.} = interruptValue # `interruptDesc`
@@ -172,10 +172,13 @@ template declareField*(peripheralName: untyped, registerName: untyped, fieldName
         const bitMask = (1'u32 shl dimIncrement) - 1'u32
         (volatileLoad(regAddr) shr p.bitOff) and bitMask
     else:
-      proc `fieldName`(_: `peripheralName _ registerName _ RegAddr`): RegisterVal {.inline.} =
+      proc `fieldName`*(_: `peripheralName _ registerName _ RegAddr`): RegisterVal {.inline.} =
         ## Returns the bit field masked and down shifted to the zero'th bit
         let r = volatileLoad(cast[ptr RegisterVal](`peripheralName _ registerName`))
         getField(r, bitOffset, bitWidth)
+      proc `fieldName`*(regVal: `peripheralName _ registerName _ RegVal`): RegisterVal {.inline.} =
+        ## Returns the bit field from an already-read register value (used with dimensioned registers)
+        getField(regVal.RegisterVal, bitOffset, bitWidth)
   else:
     when isDimensioned:
       proc `[]`*(acc: `peripheralName _ registerName _ fieldName _ Accessor`, index: uint8): `peripheralName _ registerName _ fieldName _ Proxy` {.error: "Attempted read from a write-only field".}
