@@ -39,9 +39,13 @@ template declareRegister*(peripheralName: untyped, registerName: untyped, addres
   type `peripheralName _ registerName _ RegVal` {.inject.} = distinct RegisterVal
   const `peripheralName _ registerName` = `peripheralName _ registerName _ RegAddr`(`peripheralName`.uint32 + addressOffset)
   const isDimensioned = dim != 0'u8 and dimIncrement != 0'u8
+  when isDimensioned:
+    # Generic indexed-value type: index encoded in type param, zero runtime cost.
+    type `peripheralName _ registerName _ IdxVal`[N: static int] {.inject.} = distinct RegisterVal
   func `registerName`*(base: `peripheralName _ BaseAddr`): `peripheralName _ registerName _ RegAddr` {.inline.} =
     ## Returns the register's address.  Used as a pass-through to the field operators.
     `peripheralName _ registerName`
+
   when readAccess:
     when isDimensioned:
       proc `[]`*(_: `peripheralName _ registerName _ RegAddr`, index: static uint8): `peripheralName _ registerName _ RegVal` {.inline.} =
@@ -54,6 +58,13 @@ template declareRegister*(peripheralName: untyped, registerName: untyped, addres
         assert index < dim, "Index exceeds the register's specified dim, `dim`"
         let regAddr = cast[ptr `peripheralName _ registerName _ RegVal`](`peripheralName _ registerName`.RegisterVal + index * dimIncrement)
         volatileLoad(regAddr)
+      proc `[]`*(_: `peripheralName _ registerName _ RegAddr`,
+                index: static int): `peripheralName _ registerName _ IdxVal`[index] {.inline.} =
+        ## Overrides the static-index [] and returns the indexed type
+        when index >= dim: {.error: "Index exceeds the register's specified dim".}
+        const regAddr = cast[ptr RegisterVal](
+          `peripheralName _ registerName`.RegisterVal + index.uint32 * dimIncrement)
+        `peripheralName _ registerName _ IdxVal`[index](volatileLoad(regAddr))
     else:
       proc `[]`*(_: `peripheralName _ registerName _ RegAddr`): `peripheralName _ registerName _ RegVal` {.inline.} =
         ## Returns the value in the register
@@ -83,6 +94,11 @@ template declareRegister*(peripheralName: untyped, registerName: untyped, addres
         ## Writes value to the dimensioned register element
         let regAddr = cast[ptr RegisterVal](`peripheralName _ registerName`.RegisterVal + index * dimIncrement)
         volatileStore(regAddr, value)
+      proc `[]=`*[N: static int](_: `peripheralName _ registerName _ RegAddr`, index: static int, value: `peripheralName _ registerName _ IdxVal`[N]) {.inline.} =
+        when N >= dim: {.error: "Index exceeds the register's specified dim".}
+        const regAddr = cast[ptr RegisterVal](
+          `peripheralName _ registerName`.RegisterVal + N.uint32 * dimIncrement)
+        volatileStore(regAddr, value.RegisterVal)
     else:
       proc `[]=`*(_:`peripheralName _ registerName _ RegAddr`, value: `peripheralName _ registerName _ RegVal`) {.inline.} =
         ## Writes value to the register
@@ -99,12 +115,20 @@ template declareRegister*(peripheralName: untyped, registerName: untyped, addres
     else:
       proc `[]=`(_:`peripheralName _ registerName _ RegAddr`, value: `peripheralName _ registerName _ RegVal`) {.error: "Attempted write to a read-only register".}
       proc `[]=`(_:`peripheralName _ registerName _ RegAddr`, value: RegisterVal) {.error: "Attempted write to a read-only register".}
+
   when readAccess and writeAccess:
     ## When the field rmw operations are chained, a distinct datatype represents the chained
     ## value and `write()` finalizes the chain and writes the value to the register
     type `peripheralName _ registerName _ FieldChainVal` {.inject.} = distinct RegisterVal
     proc write*(v: `peripheralName _ registerName _ FieldChainVal`) {.inline.} =
       volatileStore(cast[ptr RegisterVal](`peripheralName _ registerName`), v.RegisterVal)
+    when isDimensioned:
+      # Indexed chain type: N encodes which element write() targets.
+      type `peripheralName _ registerName _ IdxFieldChainVal`[N: static int] {.inject.} = distinct RegisterVal
+      proc write*[N: static int](v: `peripheralName _ registerName _ IdxFieldChainVal`[N]) {.inline.} =
+        const regAddr = cast[ptr RegisterVal](
+          `peripheralName _ registerName`.RegisterVal + N.uint32 * dimIncrement)
+        volatileStore(regAddr, v.RegisterVal)
 
 # TODO: see if setField with static first arg is advantageous
 func setField[T](regVal: T, fieldVal: RegisterVal, bitOffset: static uint8, bitWidth: static uint8): T {.inline.} =
@@ -249,6 +273,14 @@ template declareField*(peripheralName: untyped, registerName: untyped, fieldName
       # the subsequent chained fields receive the chain value in the first argument
       proc `fieldName`(chainVal: `peripheralName _ registerName _ FieldChainVal`, fieldVal: RegisterVal): `peripheralName _ registerName _ FieldChainVal` {.inline.} =
         setField(chainVal, fieldVal, bitOffset, bitWidth)
+      # When this field's the register is dimensioned
+      when declared(`peripheralName _ registerName _ IdxVal`):
+        proc `fieldName`*[N: static int](regVal: `peripheralName _ registerName _ IdxVal`[N], fieldVal: RegisterVal): `peripheralName _ registerName _ IdxFieldChainVal`[N] {.inline.} =
+          ## Starts RMW chain from a static-indexed read.
+          `peripheralName _ registerName _ IdxFieldChainVal`[N](setField(regVal.RegisterVal, fieldVal, bitOffset, bitWidth))
+        proc `fieldName`*[N: static int](chainVal: `peripheralName _ registerName _ IdxFieldChainVal`[N], fieldVal: RegisterVal): `peripheralName _ registerName _ IdxFieldChainVal`[N] {.inline.} =
+          ## Continues RMW chain; no re-read.
+          `peripheralName _ registerName _ IdxFieldChainVal`[N](setField(chainVal.RegisterVal, fieldVal, bitOffset, bitWidth))
 
 macro declareEnum(enumType: untyped, enumPairsStmtList: untyped) {.inject.} =
   ## Declares a Nim enumerator with the given type that is bound to a specific register.

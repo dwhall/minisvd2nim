@@ -1,0 +1,226 @@
+# RMW Chain Design — Register/Field Access Pattern
+
+## The Core Problem
+
+Two access patterns need to coexist for dimensioned (indexed) registers:
+
+```nim
+let v = PER.REG[123]                    # plain read → needs a value-like result
+PER.REG[123].FLD(3'u32).write()         # RMW chain → needs FLD() defined on result
+```
+
+The naive assumption was that `[]` must return different types in these two contexts,
+creating an overload ambiguity.  That assumption turned out to be wrong.
+
+## The Solution
+
+`[]` always returns `REG_Val` (a plain value read — no address needed).
+`FLD()` is defined on `REG_Val`, consuming it and returning a `FieldChainVal`.
+`write()` is defined on `FieldChainVal` and writes back to the register.
+
+```nim
+proc `[]`(r: PER_REG_Reg, idx: static int): PER_REG_Val  # always a read
+proc FLD(v: PER_REG_Val, val: uint32): FieldChainVal      # starts RMW chain
+proc FLD(c: FieldChainVal, val: uint32): FieldChainVal    # extends RMW chain
+proc write(c: FieldChainVal)                              # commits RMW
+```
+
+No overload conflict.  `FLD()` has two overloads on different receiver types.
+
+## How write() Knows the Destination Address
+
+The key insight: if we know the specific `REG_Val` *type*, we know the register,
+and we know its address.  For non-indexed registers the type uniquely determines
+the address at compile time.
+
+For dimensioned registers, the type alone is not enough because multiple instances
+exist at different addresses (e.g. NVIC_IPR[0], NVIC_IPR[1], ..., NVIC_IPR[239]).
+
+## Encoding the Index in the Type
+
+Rather than storing the address at runtime inside a fat value struct, we encode
+the index into the type name itself:
+
+    NVIC_IPR_0_Val, NVIC_IPR_1_Val, ..., NVIC_IPR_239_Val
+
+Each type is distinct, uniquely identifies the register instance, and allows
+`write()` to resolve the destination address at compile time.
+
+The metagenerator already loops over `dim` to emit declarations, so generating
+N types and N `[]` overloads is a natural extension of that loop.
+
+**Cost:** Zero.  Nim types are purely compile-time.  No runtime overhead.
+
+## Implication: Static vs Runtime Index
+
+This design stratifies indexed access into two tiers:
+
+### Compile-time (static) index — full chain available
+```nim
+NVIC.NVIC_IPR[4].FLD(3'u32).write()    # [] returns NVIC_IPR_4_Val
+                                        # write() resolves address from type
+```
+
+### Runtime index — read only (no RMW chain)
+```nim
+let n = getIrqNum()
+let v = NVIC.NVIC_IPR[n]               # [] returns generic NVIC_IPR_Val (no index in type)
+                                        # fine for reads
+
+NVIC.NVIC_IPR[n].FLD(3'u32).write()    # COMPILE ERROR: write() not defined on generic val
+```
+
+Runtime-indexed RMW requires explicit manual bit manipulation — the user opts in
+to the lower-level form:
+
+```nim
+let v = NVIC.NVIC_IPR[n]
+NVIC.NVIC_IPR[n] = (v.value and not FLD_MASK) or (3'u32 shl FLD_SHIFT)
+```
+
+**Why this is a good constraint:** RMW on a register you cannot statically identify
+is inherently more dangerous in embedded code.  The type system enforcing explicit
+handling for runtime-indexed RMW is a safety feature, not a limitation.
+
+## Options That Were Considered and Rejected
+
+### Option B — Nim `converter` from RegAddr to RegVal
+- `[]` returns `RegAddr`; a converter auto-fires when an explicit type is expected.
+- Rejected: type inference (`let v = REG[n]`) infers `RegAddr`, not `uint32`.
+  Converters only fire on type mismatch, not during inference.
+  Most call sites use inference, so this would require widespread type annotations.
+
+### Option D — Named `.at()` method for address
+- `PER.REG[n]` for reads, `PER.REG.at(n).FLD(val).write()` for RMW.
+- Rejected: unconventional, two syntaxes for the same indexing concept.
+
+### Option E (pure proxy type) — `[]` returns a proxy with converter
+- `[]` always returns `RegProxy` carrying address+value.
+- A `converter` to `uint32` handles read contexts with explicit type annotation.
+- Not fully rejected, but superseded: the type-encoded-index approach achieves
+  the same goals without a proxy and without needing converters.
+
+### Fat value struct (address + value pair)
+- `REG_Val = object { address: ptr uint32; value: uint32 }`
+- `FLD()` threads address through chain; `write()` uses it.
+- Rejected: unnecessary runtime data; the address is statically known from the type.
+
+## Summary of Final Design
+
+| Scenario                        | Syntax                              | Return type         |
+|---------------------------------|-------------------------------------|---------------------|
+| Non-indexed read                | `PER.REG[]`                         | `PER_REG_Val`       |
+| Non-indexed write               | `PER.REG[] = v`                     | —                   |
+| Non-indexed RMW                 | `PER.REG.FLD(v).write()`            | chain on reg object |
+| Static-indexed read             | `PER.REG[4]`                        | `PER_REG_4_Val`     |
+| Static-indexed write            | `PER.REG[4] = v`                    | —                   |
+| Static-indexed RMW              | `PER.REG[4].FLD(v).write()`         | chain via type      |
+| Runtime-indexed read            | `PER.REG[n]`                        | `PER_REG_Val`       |
+| Runtime-indexed write           | `PER.REG[n] = v`                    | —                   |
+| Runtime-indexed RMW             | not supported via chain (by design) | —                   |
+
+## Metagenerator Impact
+
+`declareRegister` (or the dim variant) needs to:
+1. Emit N distinct `REG_idx_Val` types (one per index).
+2. Emit N `[]` overloads returning the corresponding typed value.
+3. Emit `FLD()` overloads on both `REG_idx_Val` and `FieldChainVal`.
+4. Emit a generic `REG_Val` (no index) for runtime-index read-only access.
+5. Ensure `write()` on `FieldChainVal` resolves address from type at compile time.
+
+## Implementation: Generic Type Approach
+
+Rather than emitting N distinct named types via a macro loop, Nim's generic types
+with `static int` parameters achieve the same goal with far less generated code:
+
+```nim
+type NVIC_IPR_IdxVal[N: static int] = distinct RegisterVal
+```
+
+This single declaration gives `NVIC_IPR_IdxVal[0]`, `NVIC_IPR_IdxVal[4]`, etc. —
+each is a distinct compile-time type encoding the index.  No macro loop needed.
+
+A macro loop generating `NVIC_IPR_0_Val` ... `NVIC_IPR_239_Val` as separate
+`distinct` types does not work because you still cannot write:
+
+    proc [](_, idx: static int): NVIC_IPR_{idx}_Val
+
+Nim cannot splice a static value into a return type name.  The generic approach
+sidesteps that entirely.
+
+### Changes to `declareRegister`
+
+Inside the `when isDimensioned` block, alongside the existing type declarations:
+
+```nim
+when isDimensioned:
+  # Generic indexed-value type: index encoded in type param, zero runtime cost.
+  # PERIPH_REG_RegVal is still emitted above for runtime-indexed reads.
+  type `peripheralName _ registerName _ IdxVal`[N: static int] {.inject.} = distinct RegisterVal
+
+  when readAccess:
+    # Static-index [] returns the indexed type.
+    # The existing runtime-index [] (returning RegVal) is already declared above.
+    proc `[]`*(_: `peripheralName _ registerName _ RegAddr`,
+               index: static int): `peripheralName _ registerName _ IdxVal`[index] {.inline.} =
+      when index >= dim: {.error: "Index exceeds the register's specified dim".}
+      const regAddr = cast[ptr RegisterVal](
+        `peripheralName _ registerName`.RegisterVal + index.uint32 * dimIncrement)
+      `peripheralName _ registerName _ IdxVal`[index](volatileLoad(regAddr))
+
+  when writeAccess:
+    proc `[]=`*[N: static int](_: `peripheralName _ registerName _ RegAddr`,
+                                index: static int{N},
+                                value: `peripheralName _ registerName _ IdxVal`[N]) {.inline.} =
+      when N >= dim: {.error: "Index exceeds the register's specified dim".}
+      const regAddr = cast[ptr RegisterVal](
+        `peripheralName _ registerName`.RegisterVal + N.uint32 * dimIncrement)
+      volatileStore(regAddr, value.RegisterVal)
+
+  when readAccess and writeAccess:
+    # Indexed chain type: N encodes which element write() targets.
+    type `peripheralName _ registerName _ IdxFieldChainVal`[N: static int] {.inject.} = distinct RegisterVal
+    proc write*[N: static int](v: `peripheralName _ registerName _ IdxFieldChainVal`[N]) {.inline.} =
+      const regAddr = cast[ptr RegisterVal](
+        `peripheralName _ registerName`.RegisterVal + N.uint32 * dimIncrement)
+      volatileStore(regAddr, v.RegisterVal)
+```
+
+Nim resolves the `[]` overload correctly: `static int` wins over `uint8`/`int` for
+compile-time constants, so the runtime-indexed overload (returning `RegVal`) is
+unaffected.
+
+### Changes to `declareField`
+
+`FLD()` needs two new overloads per field — one starting the chain from `IdxVal[N]`,
+one continuing it from `IdxFieldChainVal[N]`:
+
+```nim
+when readAccess and writeAccess and not isDimensioned:  # field is scalar, reg IS dimensioned
+  proc `fieldName`*[N: static int](
+      regVal: `peripheralName _ registerName _ IdxVal`[N],
+      fieldVal: RegisterVal): `peripheralName _ registerName _ IdxFieldChainVal`[N] {.inline.} =
+    ## Starts RMW chain from a static-indexed read.
+    `peripheralName _ registerName _ IdxFieldChainVal`[N](
+      setField(regVal.RegisterVal, fieldVal, bitOffset, bitWidth))
+
+  proc `fieldName`*[N: static int](
+      chainVal: `peripheralName _ registerName _ IdxFieldChainVal`[N],
+      fieldVal: RegisterVal): `peripheralName _ registerName _ IdxFieldChainVal`[N] {.inline.} =
+    ## Continues RMW chain; no re-read.
+    `peripheralName _ registerName _ IdxFieldChainVal`[N](
+      setField(chainVal.RegisterVal, fieldVal, bitOffset, bitWidth))
+```
+
+### End-to-end example
+
+```nim
+NVIC.NVIC_IPR[4].FIELD(3'u32).write()
+# []      → NVIC_IPR_IdxVal[4]
+# .FIELD() → reads register, inserts field → NVIC_IPR_IdxFieldChainVal[4]
+# .write() → address resolved as base + 4*dimIncrement at compile time
+
+let n = getIrqNum()
+let v = NVIC.NVIC_IPR[n]   # → NVIC_IPR_RegVal, no index in type, read-only
+NVIC.NVIC_IPR[n].FIELD(3'u32).write()  # COMPILE ERROR: write() not on RegVal chain
+```
