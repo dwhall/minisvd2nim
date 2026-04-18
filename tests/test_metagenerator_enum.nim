@@ -51,7 +51,7 @@ declareFieldEnum(peripheralName = EPER, registerName = WOENREG, fieldName = WOEN
 
 suite "Enum type declaration":
   test "declareFieldEnum SHOULD create the enum type":
-    check compiles(EPER_EREG_EFLDVal)
+    check compiles(EPER_EREG_EFLD_enum)
   test "Enum values SHOULD be accessible":
     check compiles(Disabled)
     check compiles(Input)
@@ -63,66 +63,66 @@ suite "Enum type declaration":
     check Output.uint32 == 2'u32
     check AltFunc.uint32 == 3'u32
   test "Each field SHOULD have its own distinct enum type":
-    check compiles(EPER_EREG_EFLDVal)
-    check compiles(EPER_EREG_EFLD2Val)
-    check not compiles (var x: EPER_EREG_EFLDVal = Low;)
+    check compiles(EPER_EREG_EFLD_enum)
+    check compiles(EPER_EREG_EFLD2_enum)
+    check not compiles (var x: EPER_EREG_EFLD_enum = Low;)
 
 suite "Enum field write (field= zeroes other bits)":
   test "Direct register, write enum value SHOULD compile":
-    check compiles (EPER.EREG.EFLD = Output;)
+    check compiles (EPER.EREG.EFLD(Output))
   test "Direct register, write enum value SHOULD store correct bits":
     # Output=2, bits[3:2], so stored value is 2 shl 2 = 0x08; all other bits zero
     mockInitRegs()
-    EPER.EREG.EFLD = Output
+    EPER.EREG.EFLD(Output)
     check mockRegRead(0xF004_0000'u32) == 0x0000_0008'u32
   test "Direct register, write a different enum value SHOULD store correct bits":
     # AltFunc=3, bits[3:2], so stored value is 3 shl 2 = 0x0C
     mockInitRegs()
-    EPER.EREG.EFLD = AltFunc
+    EPER.EREG.EFLD(AltFunc)
     check mockRegRead(0xF004_0000'u32) == 0x0000_000C'u32
   test "Direct register, write enum value SHOULD zero bits outside the field":
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0xFFFF_FFFF'u32)
-    EPER.EREG.EFLD = Input
+    EPER.EREG.EFLD(Input)
     # Input=1, bits[3:2] → 1 shl 2 = 0x04; all other bits zeroed
     check mockRegRead(0xF004_0000'u32) == 0x0000_0004'u32
   test "Direct register, write wrong enum type to field SHOULD NOT compile":
-    check not compiles(EPER.EREG.EFLD = Low)
+    check not compiles(EPER.EREG.EFLD(Low))
   test "Direct register, write enum to read-only field SHOULD NOT compile":
-    check not compiles(EPER.ROENREG.ROENFL = EPER_ROENREG_ROENFLVal.On)
+    check not compiles(EPER.ROENREG.ROENFL(EPER_ROENREG_ROENFL_enum.On))
   test "Direct register, write enum to write-only field SHOULD compile":
-    check compiles (EPER.WOENREG.WOENFL = EPER_WOENREG_WOENFLVal.ModeC;)
+    check compiles (EPER.WOENREG.WOENFL(EPER_WOENREG_WOENFL_enum.ModeC))
   test "Direct register, write enum to write-only field SHOULD store correct bits":
     # ModeC=2, bits[5:4], so stored value is 2 shl 4 = 0x20
     mockInitRegs()
-    EPER.WOENREG.WOENFL = EPER_WOENREG_WOENFLVal.ModeC
+    EPER.WOENREG.WOENFL(EPER_WOENREG_WOENFL_enum.ModeC)
     check mockRegRead(0xF004_0008'u32) == 0x0000_0020'u32
   test "Indirect peripheral, write enum value SHOULD store correct bits":
     let p = EPER
     mockInitRegs()
-    p.EREG.EFLD = Output
+    p.EREG.EFLD(Output)
     check mockRegRead(0xF004_0000'u32) == 0x0000_0008'u32
   test "Indirect register, write enum value SHOULD store correct bits":
     let r = EPER.EREG
     mockInitRegs()
-    r.EFLD = AltFunc
+    r.EFLD(AltFunc)
     check mockRegRead(0xF004_0000'u32) == 0x0000_000C'u32
 
 suite "Enum field read-modify-write":
   test "Direct register, enum RMW SHOULD compile":
-    check compiles(EPER.EREG.EFLD(Output).write())
+    check compiles(EPER.EREG.read().EFLD(Output).write())
   test "Direct register, enum RMW SHOULD change only the field's bits":
     # Output=2, bits[3:2]: mask=0x0C; starting from 0xFFFF_FFFF
     # clear bits[3:2], set to 0b10 → 0xFFFF_FFF3 | 0x08 = 0xFFFF_FFFB
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0xFFFF_FFFF'u32)
-    EPER.EREG.EFLD(Output).write()
+    EPER.EREG.read().EFLD(Output).write()
     check mockRegRead(0xF004_0000'u32) == 0xFFFF_FFFB'u32
   test "Direct register, enum RMW to zero SHOULD clear only the field's bits":
     # Disabled=0, bits[3:2]: starting from 0xFFFF_FFFF → clear bits[3:2]
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0xFFFF_FFFF'u32)
-    EPER.EREG.EFLD(Disabled).write()
+    EPER.EREG.read().EFLD(Disabled).write()
     check mockRegRead(0xF004_0000'u32) == 0xFFFF_FFF3'u32
   test "Direct register, chained enum RMW on two fields SHOULD change only those fields":
     # EFLD=Output(2) bits[3:2] → 0b10, EFLD2=High(2) bits[7:6] → 0b10
@@ -133,7 +133,7 @@ suite "Enum field read-modify-write":
     #   result: 0xFFFF_FF33 | 0x88 = 0xFFFF_FFBB
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0xFFFF_FFFF'u32)
-    EPER.EREG.EFLD(Output).EFLD2(High).write()
+    EPER.EREG.read().EFLD(Output).EFLD2(High).write()
     check mockRegRead(0xF004_0000'u32) == 0xFFFF_FFBB'u32
   test "Direct register, chained RMW mixing enum and uint32 SHOULD work":
     # EFLD=AltFunc(3) bits[3:2] → 0b11, EFLD2=1(Med) bits[7:6] → 0b01
@@ -141,24 +141,24 @@ suite "Enum field read-modify-write":
     #   set bits: (3 shl 2) | (1 shl 6) = 0x0C | 0x40 = 0x4C
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0x0000_0000'u32)
-    EPER.EREG.EFLD(AltFunc).EFLD2(1'u32).write()
+    EPER.EREG.read().EFLD(AltFunc).EFLD2(1'u32).write()
     check mockRegRead(0xF004_0000'u32) == 0x0000_004C'u32
   test "Direct register, enum RMW on read-only field SHOULD NOT compile":
-    check not compiles(EPER.ROENREG.ROENFL(EPER_ROENREG_ROENFLVal.On).write())
+    check not compiles(EPER.ROENREG.read().ROENFL(EPER_ROENREG_ROENFL_enum.On).write())
   test "Direct register, enum RMW with wrong enum type SHOULD NOT compile":
-    check not compiles(EPER.EREG.EFLD(Low).write())
+    check not compiles(EPER.EREG.read().EFLD(Low).write())
   test "Indirect peripheral, enum RMW SHOULD change only the field's bits":
     let p = EPER
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0xFFFF_FFFF'u32)
-    p.EREG.EFLD(Input).write()
+    p.EREG.read().EFLD(Input).write()
     # Input=1, bits[3:2]: 0xFFFF_FFF3 | (1 shl 2) = 0xFFFF_FFF3 | 0x04 = 0xFFFF_FFF7
     check mockRegRead(0xF004_0000'u32) == 0xFFFF_FFF7'u32
   test "Indirect register, enum RMW SHOULD change only the field's bits":
     let r = EPER.EREG
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0xFFFF_FFFF'u32)
-    r.EFLD(Disabled).write()
+    r.read().EFLD(Disabled).write()
     check mockRegRead(0xF004_0000'u32) == 0xFFFF_FFF3'u32
 
 suite "Enum field read":
@@ -166,31 +166,27 @@ suite "Enum field read":
     # bits[3:2]=0b10 → Output=2
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0x0000_0008'u32)
-    let v = EPER.EREG.EFLD
+    let v = EPER.EREG.read().EFLD
     check v.uint32 == Output.uint32
   test "Direct register, read from read-only enum field SHOULD work":
     # bits[1:0]=0b01 → On=1
     mockInitRegs()
     mockRegPreset(0xF004_0004'u32, 0x0000_0001'u32)
-    let v = EPER.ROENREG.ROENFL
-    check v.uint32 == EPER_ROENREG_ROENFLVal.On.uint32
+    let v = EPER.ROENREG.read().ROENFL
+    check v.uint32 == EPER_ROENREG_ROENFL_enum.On.uint32
   test "Direct register, read from write-only enum field SHOULD NOT compile":
-    check not compiles(EPER.WOENREG.WOENFL)
+    check not compiles(EPER.WOENREG.read().WOENFL)
   test "Indirect peripheral, field read SHOULD return a value matching the enum":
     let p = EPER
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0x0000_000C'u32)
-    let v = p.EREG.EFLD
+    let v = p.EREG.read().EFLD
     check v.uint32 == AltFunc.uint32
   test "Indirect register, field read SHOULD return a value matching the enum":
     let r = EPER.EREG
     mockInitRegs()
     mockRegPreset(0xF004_0000'u32, 0x0000_0004'u32)
-    let v = r.EFLD
+    let v = r.read().EFLD
     check v.uint32 == Input.uint32
-
-
-
-
 
 

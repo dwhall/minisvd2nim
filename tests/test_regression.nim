@@ -16,37 +16,43 @@ declareField(peripheralName = NVIC, registerName = NVIC_IPR, fieldName = PRI_N0,
 
 suite "Regression of field access of dimensioned register":
   test "field read of dimensioned register SHOULD compile":
-    check compiles NVIC.NVIC_IPR[123].PRI_N3(3'u32)
+    check compiles NVIC.NVIC_IPR(123).read().PRI_N3(3'u32)
   test "all declared fields SHOULD allow rmw":
-    check compiles NVIC.NVIC_IPR[123].PRI_N3(3'u32).PRI_N2(2'u32).PRI_N1(1'u32).PRI_N0(0'u32).write()
+    check compiles NVIC.NVIC_IPR(123).read().PRI_N3(3'u32).PRI_N2(2'u32).PRI_N1(1'u32).PRI_N0(0'u32).write()
   test "rmw of dimensioned register SHOULD work":
     const dimRegAddr = 0xE000E100'u32 + 0x300 + 123 * 4
     mockInitRegs()
     mockRegPreset(dimRegAddr, 0xFFFF_FFFF'u32)
-    NVIC.NVIC_IPR[123].PRI_N3(3'u32).write
+    NVIC.NVIC_IPR(123).read().PRI_N3(3'u32).write()
     check mockRegRead(dimRegAddr) == 0x03FF_FFFF
 
   test "rmw of dimensioned field in dimensioned register SHOULD compile":
-    check compiles NVIC.NVIC_ISER[0].SETENA[17](1)
+    check compiles NVIC.NVIC_ISER(0).SETENA(17, 1)
 
   test "rmw of dimensioned field in dimensioned register SHOULD work":
     const dimRegAddr = 0xE000E100'u32 + 0x0 + 0 * 16
     mockInitRegs()
     mockRegPreset(dimRegAddr, 0xFFFF_FFFF'u32)
-    NVIC.NVIC_ISER[0].SETENA[17](0).write()
+    NVIC.NVIC_ISER(0).read().SETENA(17, 0).write()
     check mockRegRead(dimRegAddr) == 0xFFFD_FFFF'u32
     mockRegPreset(dimRegAddr, 0'u32)
-    NVIC.NVIC_ISER[0].SETENA[17](1).write()
+    NVIC.NVIC_ISER(0).read().SETENA(17, 1).write()
     check mockRegRead(dimRegAddr) == 0x0002_0000'u32
 
   test "rmw of chained dimensioned fields in dimensioned register SHOULD work":
     const dimRegAddr = 0xE000E100'u32 + 0x0 + 0 * 16
     mockInitRegs()
     mockRegPreset(dimRegAddr, 0xFFFF_FFFF'u32)
-    NVIC.NVIC_ISER[0].SETENA[17](0).SETENA[31](0).write()
+    NVIC.NVIC_ISER(0).read().SETENA(17, 0).SETENA(31, 0).write()
     check mockRegRead(dimRegAddr) == 0x7FFD_FFFF'u32
     mockRegPreset(dimRegAddr, 0'u32)
-    NVIC.NVIC_ISER[0].SETENA[17](1).SETENA[31](1).write()
+    NVIC.NVIC_ISER(0).read().SETENA(17, 1).SETENA(31, 1).write()
     check mockRegRead(dimRegAddr) == 0x8002_0000'u32
 
+declarePeripheral(peripheralName = RTC1, baseAddress = 0x40011000'u32, peripheralDesc = "Real time counter 0")
+declareRegister(peripheralName = RTC1, registerName = CC, addressOffset = 0x00000540'u32, dim = 4, dimIncrement = 4, readAccess = true, writeAccess = true, registerDesc = "Description collection: Compare register n")
+declareField(peripheralName = RTC1, registerName = CC, fieldName = COMPARE, bitOffset = 0, bitWidth = 24, dim = 0, dimIncrement = 0, readAccess = true, writeAccess = true, fieldDesc = "Compare value")
 
+suite "Regression of register access":
+  test "write to a dimensioned register SHOULD compile":
+    check compiles RTC1.CC(0).COMPARE(0'u32)

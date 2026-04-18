@@ -46,8 +46,10 @@ using
 const importMetaGeneratorHeader =
   """# To learn how to use the output of the declarations below, visit:
 # https://github.com/dwhall/minisvd2nim/blob/main/README.md#how-to-access-the-device
+#!fmt: off
 
 import metagenerator
+export read, write
 
 """
 
