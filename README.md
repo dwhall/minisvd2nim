@@ -90,6 +90,11 @@ symbols defined by the SVD file, which may be upper or lowercase.
 
 ## How to access the device
 
+The following syntax diagram shows the different ways to construct
+read, write and read-modify-write expressions:
+
+![minisvd2nim syntax diagram](minisvd2nim_syntax.png)
+
 The following Nim code shows how to import a device and its peripherals,
 access a ficticious register (REG) of a peripheral (PER) and its fields
 (FIELD1 and FIELD2).  The import statement uses lowercase `periph` to access
@@ -156,12 +161,51 @@ PER.REG.read()
 
 # If the SVD file has enums declared for the field values,
 # the enum symbols (VAL1 in this example) may be used to set the field value:
-PER.REG..read().FIELD1(VAL1).write()
+PER.REG.read().FIELD1(VAL1).write()
 
 # you may also use the enums to compare against the register's value:
 if PER.REG.read().FIELD1 == VAL1:
   # do something
   discard
+
+# Dimensioned Registers
+# Some SVD files specify "dimensioned registers" which are a sequence of nearly
+# identical registers differing only by their address offset from a base.
+# Accessing a dimensioned register for read, write and read-modify-write
+# is the same as above, but you append parentheses to the register name
+# and put your desired index inside.  Indexing starts from zero.
+
+# read
+let v = PER.REG(4).read # reads the fifth dimensioned REG
+# write
+PER.REG(3).write(42) # writes forty-two to the fourth dimensioned REG
+# read-modify-write
+PER.REG(1).read().FIELD1(0).write
+
+# The index has a default argument of zero, so the base
+# dimensioned register is used if no index is given.
+PER.REG.write(1) # writes one to the first dimensioned REG
+
+# Dimensioned Fields
+# Some SVD files specify "dimensioned fields" which are a sequence of nearly
+# identical fields differeing only by their bit offset from the base (zero).
+# Accessing a dimensioned field for read, write and read-modify-write
+# is seend below; notice that you simply insert an `index` argument to the FLD.
+# Indexing starts from zero.
+
+# read
+let f = PER.REG.read().FLD(4) # reads the fifth dimensioned field in REG
+# write
+PER.REG.FLD(4, 1) # writes 1 to the fifth dimensioned field in REG and zeros to everywhere outside the field!
+# read-modify-write
+PER.REG.read().FLD(1, 1).FLD(2,0).write # writes 1 to the second field and 0 to the third field
+
+# The index argument has a default value of zero,
+# so this writes six into FLD not a read:
+PER.REG.FLD(6)
+# The way to remember this is that you must read the register in order to read fields within it.
+
+# At the time of this writing, you MUST use static integers to index into registers
 ```
 
 ## Tests

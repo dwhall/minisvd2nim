@@ -1,0 +1,3 @@
+*.exe
+/example/stm32/stm32f446*
+/example/arm_cores/cm4f*
