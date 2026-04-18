@@ -179,7 +179,7 @@ proc renderDevice(pkgPath, device, deviceName) =
     defer:
       outf.close()
     outf.write(
-      importMetaGeneratorHeader & &"#!fmt: off\n" &
+      importMetaGeneratorHeader &
         &"declareDevice(deviceName = {deviceName}, svdFileVersion = \"{svdFileVersion}\", description = \"{description}\")\p"
     )
     renderCpu(outf, device)
