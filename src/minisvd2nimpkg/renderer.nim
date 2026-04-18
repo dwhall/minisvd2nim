@@ -216,7 +216,6 @@ proc renderPeripherals(pkgPath, device) =
     assert outf.open(periphModule.string, mode)
     if overwriteTheFile:
       outf.write(importMetaGeneratorHeader)
-      outf.write("#!fmt: off\n")
     outf.renderPeripheral(device, p)
     outf.close()
     periphFileSet.incl(lowerPeriphName)
