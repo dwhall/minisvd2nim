@@ -16,15 +16,3 @@ task test, "Run desktop tests":
   ]
   for t in desktopTests:
     exec "nim r tests/" & t
-
-task testarm, "Compile ARM target tests":
-  # Compile only — cannot run ARM binary on host
-  let targetTests = [
-    "tests/test_arm32b.nim",
-  ]
-  for t in targetTests:
-    exec "nim compileToC --compileOnly:on --path:src/minisvd2nimpkg " &
-        "--cpu:arm --os:any " &
-         "--arm.any.gcc.exe:arm-none-eabi-gcc " &
-         "--arm.any.gcc.linkerexe:arm-none-eabi-gcc " &
-         t

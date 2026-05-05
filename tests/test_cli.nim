@@ -1,4 +1,5 @@
-import std/[files, os, paths, unittest]
+import std/[files, os, osproc, paths]
+import unittest2
 
 proc quoteWrap(s: string): string =
   "\"" & s & "\""
@@ -19,3 +20,15 @@ test "the CLI should process the example .svd file":
   check 0 == execShellCmd(cmd)
   # remove the directory that was just created by the test
   os.removeDir("test_small")
+
+test "the CLI should compile 32-bit ARM without 32/64-bit conflicts":
+  let cmd =
+    "nim compileToC --compileOnly:on --path:../src/minisvd2nimpkg " &
+    "--define:useMalloc " & "--cpu:arm --os:any --mm:arc " &
+    "--arm.any.gcc.exe:arm-none-eabi-gcc " & "--arm.any.gcc.linkerexe:arm-none-eabi-gcc " &
+    currentSourcePath().parentDir() / "arm32b.nim"
+  echo "DWH: " & cmd
+  let (output, exitCode) = execCmdEx(cmd)
+  if exitCode != 0:
+    echo "Compile failure output: ", output
+  check exitCode == 0

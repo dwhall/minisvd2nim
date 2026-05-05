@@ -27,9 +27,9 @@ import std/[macros, tables, volatile]
 
 type
   RegType = uint32
-  # Encode the register's address into the *Addr and *Val types so that
+  # Encode the address into the Peripheral, RegAddr and *Val types so that
   # the address is available to the tail of the call chain (usually a write)
-  BaseAddr[Tbase: static RegType] = distinct RegType
+  Peripheral[Tbase: static RegType] = distinct string
   RegAddr[Taddr: static RegType] = distinct RegType
   RegVal[Taddr: static RegType] = distinct RegType
   FldVal[Taddr: static RegType] = distinct RegType
@@ -37,6 +37,7 @@ type
 var
   # Store some attributes that are set within declare* templates
   # for use at compile time outside of their declare* templates
+  peripheralBaseAddr {.compileTime.} = initTable[string, RegType]()
   regReadAccess {.compileTime.} = initTable[RegType, bool]()
   regWriteAccess {.compileTime.} = initTable[RegType, bool]()
   regIsDimensioned {.compileTime.} = initTable[RegType, bool]()
@@ -65,7 +66,9 @@ proc write*[Taddr: static RegType](_: RegAddr[Taddr], value: RegVal[Taddr] | Reg
   volatileStore(regAddr, value.RegType)
 
 template declarePeripheral*(peripheralName: untyped, baseAddress: static uint32, peripheralDesc: static string): untyped =
-  const peripheralName* {.inject.} = BaseAddr[baseAddress](baseAddress)
+  const peripheralName* {.inject.} = Peripheral[baseAddress](astToStr(peripheralName))
+  static:
+    peripheralBaseAddr[astToStr(peripheralName)] = baseAddress
 
 template declareInterrupt*(peripheralName: untyped, interruptName: untyped, interruptValue: static int, interruptDesc: static string, ): untyped =
   const `irq _ interruptName`* {.inject.} = interruptValue # `interruptDesc`
@@ -74,8 +77,8 @@ template declareRegister*(peripheralName: untyped, registerName: untyped, addres
                           dim: static int = 0, dimIncrement: static int = 0,
                           readAccess: static bool, writeAccess: static bool, registerDesc: static string): untyped =
   const isDimensioned = dim != 0 and dimIncrement != 0
-  const a = peripheralName.RegType + addressOffset
-  const `peripheralName _ registerName` {.inject.} = a
+  const a: RegType = peripheralBaseAddr[astToStr(peripheralName)] + addressOffset
+  const `peripheralName _ registerName` {.inject.} = a # used by declareFieldEnum
   static:
     # Set attributes of the declared register
     regDim[a] = dim
@@ -85,17 +88,16 @@ template declareRegister*(peripheralName: untyped, registerName: untyped, addres
     regWriteAccess[a] = writeAccess
     # Dimensioned regiser
     for i in 1.RegType ..< dim:
-      let dimAddr = peripheralName.RegType + addressOffset + dimIncrement.RegType * i
+      let dimAddr = peripheralBaseAddr[astToStr(peripheralName)] + addressOffset + dimIncrement.RegType * i
       regDim[dimAddr] = dim
       regDimIncrement[dimAddr] = dimIncrement.RegType
       regIsDimensioned[dimAddr] = false
       regReadAccess[dimAddr] = readAccess
       regWriteAccess[dimAddr] = writeAccess
 
-  func registerName*[Tbase: static RegType](_: BaseAddr[Tbase], index: static int = 0): auto {.inline.} =
+  func registerName*[Tbase: static RegType](_: Peripheral[Tbase], index: static int = 0): auto {.inline.} =
     ## Returns the dimensioned register's address as a RegAddr[Taddr]
     ## Implements `PER.REG(1)`
-    # TODO: Ensure this register belongs to the peripheral
     when index > 0 and not isDimensioned:
       {.error: "Attempted dimensioned access of non-dimensioned register."}
     when index >= dim and dim > 0:
@@ -103,12 +105,14 @@ template declareRegister*(peripheralName: untyped, registerName: untyped, addres
     const a: RegType = Tbase + addressOffset + index.uint32 * dimIncrement.uint32
     RegAddr[a](a)
 
-  func registerName*[Tbase: static RegType](_: BaseAddr[Tbase], index: uint32 = 0'u32): auto {.inline.} =
+  func registerName*[Tbase: static RegType](_: Peripheral[Tbase], index: uint32 = 0'u32): auto {.inline.} =
     ## Returns the dimensioned register's address as a RegAddr[Taddr]
     ## Non-static index, compared to the previous func
     ## Implements `PER.REG(n)`
-    # TODO: Ensure this register belongs to the peripheral
-    let a = Tbase + addressOffset + index * dimIncrement
+    when not isDimensioned:
+      assert index == 0, "Attempted dimensioned access of non-dimensioned register."
+    assert index >= 0 and index < dim, "Attempted dimensioned access of non-dimensioned register."
+    let a = Tbase + addressOffset + index * dimIncrement.uint32
     RegAddr[a](a.uint32)
 
 func getField[Taddr: static RegType](regVal: RegVal[Taddr], bitOffset: static uint8, bitWidth: static uint8): FldVal[Taddr] {.inline.} =
@@ -278,21 +282,17 @@ macro declareFieldEnum*(peripheralName: untyped, registerName: untyped, fieldNam
   ## When writeAccess: generates a field= overload accepting the enum type.
   ## When readAccess and writeAccess: generates RMW chain overloads accepting the enum type.
   let enumType = ident(peripheralName.strVal & '_' & registerName.strVal & '_' & fieldName.strVal & "_enum")
-  # Construct the type expressions with identifiers; the compiler will resolve them
-  let regAddr = ident(peripheralName.strVal & "_" & registerName.strVal)
-  let regAddrType = nnkBracketExpr.newTree(ident("RegAddr"), regAddr)
-  let regValType = nnkBracketExpr.newTree(ident("RegVal"), regAddr)
-  let fieldValType = nnkBracketExpr.newTree(ident("FldVal"), regAddr)
   result = newStmtList()
   result.add(quote do:
     declareEnum(`enumType`, `values`))
   if writeAccess:
     result.add(quote do:
-      proc `fieldName`*(regAddr: RegAddr[`regAddr`], value: `enumType`) {.inline.} =
+      proc `fieldName`*[Taddr: static RegType](regAddr: RegAddr[Taddr], value: `enumType`) {.inline.} =
         `fieldName`(regAddr, value.uint32))
   if readAccess and writeAccess:
     result.add(quote do:
-      proc `fieldName`*(regAddr: RegVal[`regAddr`], value: `enumType`): FldVal[`regAddr`] {.inline.} =
+      proc `fieldName`*[Taddr: static RegType](regAddr: RegVal[Taddr], value: `enumType`): FldVal[Taddr] {.inline.} =
         `fieldName`(regAddr, value.uint32)
-      proc `fieldName`*(chainVal: FldVal[`regAddr`], value: `enumType`): FldVal[`regAddr`] {.inline.} =
+      proc `fieldName`*[Taddr: static RegType](chainVal: FldVal[Taddr], value: `enumType`): FldVal[Taddr] {.inline.} =
         `fieldName`(chainVal, value.uint32))
+

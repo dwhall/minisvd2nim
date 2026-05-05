@@ -59,7 +59,10 @@ suite "Test the renderer.":
     for periph in ["dcmi", "rtc", "can", "sdio"]:
       let modPath = pkgPath / Path(periph & ".nim")
       let cmd = "nim c " & quoteWrap(modPath.string)
-      let (_, exitCode) = execCmdEx(cmd)
+      let (output, exitCode) = execCmdEx(cmd)
+      if exitCode != 0:
+        echo "Compilation failed for module: ", periph
+        echo "Output: ", output
       check exitCode == 0
 
   test "the renderer SHOULD declare a peripheral's interrupts":
