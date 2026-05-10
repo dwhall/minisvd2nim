@@ -27,7 +27,6 @@ test "the CLI should compile 32-bit ARM without 32/64-bit conflicts":
     "--define:useMalloc " & "--cpu:arm --os:any --mm:arc " &
     "--arm.any.gcc.exe:arm-none-eabi-gcc " & "--arm.any.gcc.linkerexe:arm-none-eabi-gcc " &
     currentSourcePath().parentDir() / "arm32b.nim"
-  echo "DWH: " & cmd
   let (output, exitCode) = execCmdEx(cmd)
   if exitCode != 0:
     echo "Compile failure output: ", output

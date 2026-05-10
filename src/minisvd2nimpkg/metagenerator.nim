@@ -29,7 +29,7 @@ type
   RegType = uint32
   # Encode the address into the Peripheral, RegAddr and *Val types so that
   # the address is available to the tail of the call chain (usually a write)
-  Peripheral[Tbase: static RegType] = distinct string
+  Peripheral[Taddr: static RegType] = distinct RegType
   RegAddr[Taddr: static RegType] = distinct RegType
   RegVal[Taddr: static RegType] = distinct RegType
   FldVal[Taddr: static RegType] = distinct RegType
@@ -37,14 +37,13 @@ type
 var
   # Store some attributes that are set within declare* templates
   # for use at compile time outside of their declare* templates
-  peripheralBaseAddr {.compileTime.} = initTable[string, RegType]()
   regReadAccess {.compileTime.} = initTable[RegType, bool]()
   regWriteAccess {.compileTime.} = initTable[RegType, bool]()
   regIsDimensioned {.compileTime.} = initTable[RegType, bool]()
   regDim {.compileTime.} = initTable[RegType, RegType]()
   regDimIncrement {.compileTime.} = initTable[RegType, RegType]()
 
-proc read*[Taddr: static RegType](_: RegAddr[Taddr], index: static int = 0): auto {.inline.} =
+proc read*[Taddr: static RegType](_: RegAddr[Taddr], index: static int = 0): RegVal[Taddr] {.inline.} =
   ## Returns the value loaded from the index's offset from the register.
   ## Implements `PER.REG.read()`
   when not regReadAccess[Taddr]:
@@ -62,13 +61,11 @@ proc write*[Taddr: static RegType](_: RegAddr[Taddr], value: RegVal[Taddr] | Reg
   ## Implements `PER.REG.write(value)`
   when not regWriteAccess[Taddr]:
     {.error: "Attempted write to a register without write access.".}
-  const regAddr = cast[ptr RegType](Taddr)
-  volatileStore(regAddr, value.RegType)
+  const p = cast[ptr RegType](Taddr)
+  volatileStore(p, value.RegType)
 
 template declarePeripheral*(peripheralName: untyped, baseAddress: static uint32, peripheralDesc: static string): untyped =
-  const peripheralName* {.inject.} = Peripheral[baseAddress](astToStr(peripheralName))
-  static:
-    peripheralBaseAddr[astToStr(peripheralName)] = baseAddress
+  const `peripheralName`* {.inject.} = Peripheral[baseAddress.RegType](baseAddress.RegType)
 
 template declareInterrupt*(peripheralName: untyped, interruptName: untyped, interruptValue: static int, interruptDesc: static string, ): untyped =
   const `irq _ interruptName`* {.inject.} = interruptValue # `interruptDesc`
@@ -77,43 +74,50 @@ template declareRegister*(peripheralName: untyped, registerName: untyped, addres
                           dim: static int = 0, dimIncrement: static int = 0,
                           readAccess: static bool, writeAccess: static bool, registerDesc: static string): untyped =
   const isDimensioned = dim != 0 and dimIncrement != 0
-  const a: RegType = peripheralBaseAddr[astToStr(peripheralName)] + addressOffset
-  const `peripheralName _ registerName` {.inject.} = a # used by declareFieldEnum
+  const regAddr: RegType = peripheralName.uint32 + addressOffset
+  const `peripheralName _ registerName` {.inject.} = regAddr # used by declareField and declareFieldEnum
+  # Special support for dimensioned fields: encode the address into the register's type
+  # so that the field procs can calculate the address of the indexed register.
+  type `peripheralName _ registerName _ RegAddr`*[Taddr: static RegType] = distinct RegAddr[Taddr]
+  converter toRegAddr*[Taddr: static RegType](x: `peripheralName _ registerName _ RegAddr`[Taddr]): RegAddr[Taddr] {.inline.} =
+    cast[RegAddr[Taddr]](x)
+
   static:
     # Set attributes of the declared register
-    regDim[a] = dim
-    regDimIncrement[a] = dimIncrement.RegType
-    regIsDimensioned[a] = dim != 0 and dimIncrement != 0
-    regReadAccess[a] = readAccess
-    regWriteAccess[a] = writeAccess
+    regDim[regAddr] = dim
+    regDimIncrement[regAddr] = dimIncrement.RegType
+    regIsDimensioned[regAddr] = dim != 0 and dimIncrement != 0
+    regReadAccess[regAddr] = readAccess
+    regWriteAccess[regAddr] = writeAccess
     # Dimensioned regiser
     for i in 1.RegType ..< dim:
-      let dimAddr = peripheralBaseAddr[astToStr(peripheralName)] + addressOffset + dimIncrement.RegType * i
+      let dimAddr = peripheralName.uint32 + addressOffset + dimIncrement.RegType * i
       regDim[dimAddr] = dim
       regDimIncrement[dimAddr] = dimIncrement.RegType
       regIsDimensioned[dimAddr] = false
       regReadAccess[dimAddr] = readAccess
       regWriteAccess[dimAddr] = writeAccess
 
-  func registerName*[Tbase: static RegType](_: Peripheral[Tbase], index: static int = 0): auto {.inline.} =
+  func registerName*(_: Peripheral[peripheralName.RegType], index: static int = 0): auto {.inline.} =
     ## Returns the dimensioned register's address as a RegAddr[Taddr]
     ## Implements `PER.REG(1)`
     when index > 0 and not isDimensioned:
       {.error: "Attempted dimensioned access of non-dimensioned register."}
     when index >= dim and dim > 0:
       {.error: "Attempted dimensioned register access beyond its limit.".}
-    const a: RegType = Tbase + addressOffset + index.uint32 * dimIncrement.uint32
-    RegAddr[a](a)
+    const a = RegType(peripheralName.uint32 + addressOffset + index.uint32 * dimIncrement.uint32)
+    cast[`peripheralName _ registerName _ RegAddr`[a]](a)
 
-  func registerName*[Tbase: static RegType](_: Peripheral[Tbase], index: uint32 = 0'u32): auto {.inline.} =
-    ## Returns the dimensioned register's address as a RegAddr[Taddr]
-    ## Non-static index, compared to the previous func
-    ## Implements `PER.REG(n)`
-    when not isDimensioned:
-      assert index == 0, "Attempted dimensioned access of non-dimensioned register."
-    assert index >= 0 and index < dim, "Attempted dimensioned access of non-dimensioned register."
-    let a = Tbase + addressOffset + index * dimIncrement.uint32
-    RegAddr[a](a.uint32)
+# TODO: add support for non-static index
+#  func registerName*(p: Peripheral[peripheralName.uint32], index: uint = 0'u): auto {.inline.} =
+#    ## Returns the dimensioned register's address as a RegAddr[Taddr]
+#    ## Non-static index, compared to the previous func
+#    ## Implements `PER.REG(n)`
+#    when not isDimensioned:
+#      assert index == 0, "Attempted dimensioned access of non-dimensioned register."
+#    assert index >= 0 and index < dim, "Attempted dimensioned access of non-dimensioned register."
+#    let a = peripheralName.uint32 + addressOffset + index * dimIncrement.uint32
+#    RegAddr[a](a.uint32) # can't eval at compile time; FLAW: RegAddr[] type parameter must be static
 
 func getField[Taddr: static RegType](regVal: RegVal[Taddr], bitOffset: static uint8, bitWidth: static uint8): FldVal[Taddr] {.inline.} =
   ## Returns the bit field masked and down shifted to the zero'th bit
@@ -175,92 +179,95 @@ template declareField*(peripheralName: untyped, registerName: untyped, fieldName
                        bitOffset: static uint8, bitWidth: static uint8, dim: static int = 0, dimIncrement: static int = 0,
                        readAccess: static bool, writeAccess: static bool, fieldDesc: static string): untyped =
   const isDimensioned = dim != 0 and dimIncrement != 0
+  const regAddr: RegType = `peripheralName _ registerName`
 
   when isDimensioned:
+    proc fieldName*[Taddr: static RegType](_: `peripheralName _ registerName _ RegAddr`[Taddr], index: static uint32, value: RegType) {.inline.} =
+      ## Overwrites the register's field's bits with the value.
+      ## Overwrites the bits outside the field with zeroes.
+      ## Implements the FLD part of `PER.REG.FLD(1, value)`
+      when not writeAccess:
+        {.error: "Attempted write to a field without write access.".}
+      when index >= dim and dim > 0:
+        {.error: "Attempted dimensioned register access beyond its limit.".}
+      const initVal = FldVal[Taddr](0'u32)
+      const bitOff = index.uint8 * dimIncrement
+      let v = setField[Taddr](initVal, value, bitOff, bitWidth)
+      const regAddr = cast[ptr RegType](Taddr)
+      volatileStore(regAddr, v.RegType)
+
+    proc fieldName*[Taddr: static RegType](_: `peripheralName _ registerName _ RegAddr`[Taddr], index: uint32, value: RegType) {.inline.} =
+      ## Non-static index, compared to the previous proc
+      ## Overwrites the register's field's bits with the value (runtime index).
+      ## Overwrites the bits outside the field with zeroes.
+      ## Implements the FLD part of `PER.REG.FLD(n, value)`
+      when not writeAccess:
+        {.error: "Attempted write to a field without write access.".}
+      assert index >= 0 and index < dim, "Attempted dimensioned register access beyond its limit."
+      const initVal = FldVal[Taddr](0'u32)
+      let bitOff = uint8(index) * dimIncrement.uint8
+      let v = setField[Taddr](initVal, value, bitOff, bitWidth)
+      const regPtr = cast[ptr RegType](Taddr)
+      volatileStore(regPtr, v.RegType)
+
     proc fieldName*[Taddr: static RegType](regVal: RegVal[Taddr], index: static uint32): FldVal[Taddr] {.inline.} =
-      ## Reads the register's field
-      ## Implements `PER.REG.read().FLD(1)
+      ## Reads the register's field (static index)
+      ## Implements the FLD part of `PER.REG.read().FLD(1)
       when not readAccess:
         {.error: "Attempted read from a field without read access.".}
       when index >= dim and dim > 0:
         {.error: "Attempted dimensioned register access beyond its limit.".}
-      let bitOff = index.uint8 * dimIncrement
+      const bitOff = index.uint8 * dimIncrement
       getField[Taddr](regVal, bitOff, bitWidth)
 
     proc fieldName*[Taddr: static RegType](regVal: RegVal[Taddr], index: uint32): FldVal[Taddr] {.inline.} =
-      ## Reads the register's field
-      ## Non-static index, compared to the previous func
-      ## Implements `PER.REG.read().FLD(index)
+      ## Non-static index, compared to the previous proc
+      ## Reads the register's field (runtime index).
+      ## Implements the FLD part of `PER.REG.read().FLD(n)`
       when not readAccess:
         {.error: "Attempted read from a field without read access.".}
-      let bitOff = index.uint8 * dimIncrement
+      let bitOff = uint8(index) * dimIncrement.uint8
       getField[Taddr](regVal, bitOff, bitWidth)
 
-    proc fieldName*[Taddr: static RegType](inVal: RegAddr[Taddr], index: static uint32, value: RegType) {.inline.} =
-      ## Replaces the register's field's bits with the value.
-      ## Implements the FLD(1, value) part of `PER.REG.FLD(1, value)`
-      when not writeAccess:
-        {.error: "Attempted write to a field without write access.".}
-      when index >= dim and dim > 0:
-        {.error: "Attempted dimensioned register access beyond its limit.".}
-      const initVal = FldVal[Taddr](0'u32)
-      const regAddr = cast[ptr RegType](Taddr)
-      const bitOff = index.uint8 * dimIncrement
-      let v = setField[Taddr](initVal, value, bitOff, bitWidth)
-      volatileStore(regAddr, v.RegType)
-
-    proc fieldName*[Taddr: static RegType](inVal: RegAddr[Taddr], index: uint32, value: RegType) {.inline.} =
-      ## Replaces the register's field's bits with the value.
-      ## Implements the FLD(index, value) part of `PER.REG.FLD(index, value)`
-      when not writeAccess:
-        {.error: "Attempted write to a field without write access.".}
-      const initVal = FldVal[Taddr](0'u32)
-      const regAddr = cast[ptr RegType](Taddr)
-      let bitOff = index.uint8 * dimIncrement
-      let v = setField[Taddr](initVal, value, bitOff, bitWidth)
-      volatileStore(regAddr, v.RegType)
-
-    func fieldName*[Taddr: static RegType](inVal: RegVal[Taddr] | FldVal[Taddr], index: static uint32, value: RegType): FldVal[Taddr] {.inline.} =
+    proc fieldName*[Taddr: static RegType](inVal: RegVal[Taddr] | FldVal[Taddr], index: static uint32, value: RegType): FldVal[Taddr] {.inline.} =
       ## Rmw's the field's bits in the register with `value`.
-      ## Implements the FLD(idx, value) part of `PER.REG.read().FLD(idx, value)`
-      when not readAccess:
-        {.error: "Attempted read from a register without read access.".}
+      ## Returns the FldVal[Taddr] type to allow chaining of more field modifications.
+      ## Implements the FLD part of `PER.REG.read().FLD(idx, value)`
+      when not writeAccess:
+        {.error: "Attempted write to a field without write access.".}
       when index >= dim:
         {.error: "Attempted write to a field index beyond its limit.".}
       let fldVal = FldVal[Taddr](inVal.uint32)
-      const bitOff = index * dimIncrement
+      const bitOff = index.uint8 * dimIncrement
       setField[Taddr](fldVal, value, bitOff, bitWidth)
 
-  else:
-    func fieldName*[Taddr: static RegType](inVal: RegVal[Taddr] | FldVal[Taddr], index: static uint32, value: RegType): FldVal[Taddr] {.inline.} =
-      {.error: "Attempted dimensioned access to a non-dimensioned field".}
+  else: # not dimensioned
+    proc fieldName*[Taddr: static RegType](_: `peripheralName _ registerName _ RegAddr`[Taddr], value: RegType) {.inline.} =
+      ## Overwrites the register's field's bits with the value.
+      ## Overwrites the bits outside the field with zeroes.
+      ## Implements the FLD part of `PER.REG.FLD(1, value)`
+      when not writeAccess:
+        {.error: "Attempted write to a field without write access.".}
+      const initVal = FldVal[Taddr](0'u32)
+      let v = setField[Taddr](initVal, value, bitOffset, bitWidth)
+      const regAddr = cast[ptr RegType](Taddr)
+      volatileStore(regAddr, v.RegType)
 
     proc fieldName*[Taddr: static RegType](regVal: RegVal[Taddr]): FldVal[Taddr] {.inline.} =
-      ## Reads the register and returns the field bits downshifted (if necessary) to position 0.
-      ## Implements `let f = PER.REG.FLD`
+      ## Reads the register's field
+      ## Implements the FLD part of `PER.REG.read().FLD(1)
       when not readAccess:
         {.error: "Attempted read from a field without read access.".}
       getField[Taddr](regVal, bitOffset, bitWidth)
 
-    proc fieldName*[Taddr: static RegType](_: RegAddr[Taddr], value: RegType) {.inline.} =
-      ## Replaces the register's field's bits with the value.
-      ## Overwrites the bits outside the field with zeroes.
-      ## Implements `PER.REG.FLD(value)`
-      when not writeAccess:
-        {.error: "Attempted write to a field without write access.".}
-      const initVal = FldVal[Taddr](0)
-      const regAddr = cast[ptr RegType](Taddr)
-      let v = setField[Taddr](initVal, value, bitOffset, bitWidth)
-      volatileStore(regAddr, v.RegType)
-
     proc fieldName*[Taddr: static RegType](inVal: RegVal[Taddr] | FldVal[Taddr], value: RegType): FldVal[Taddr] {.inline.} =
-      ## Replaces inVal's field's bits with the value.
+      ## Rmw's the field's bits in the register with `value`.
       ## Returns the FldVal[Taddr] type to allow chaining of more field modifications.
-      ## Implements `PER.REG(1).FLD(5)...`
+      ## Implements the FLD part of `PER.REG.read().FLD(idx, value)`
       when not writeAccess:
         {.error: "Attempted write to a field without write access.".}
-      setField[Taddr](FldVal[Taddr](inVal), value, bitOffset, bitWidth)
-
+      let fldVal = FldVal[Taddr](inVal.uint32)
+      setField[Taddr](fldVal, value, bitOffset, bitWidth)
 
 macro declareEnum(enumType: untyped, enumPairsStmtList: untyped) {.inject.} =
   ## Declares a Nim enumerator with the given type that is bound to a specific register.
@@ -282,12 +289,14 @@ macro declareFieldEnum*(peripheralName: untyped, registerName: untyped, fieldNam
   ## When writeAccess: generates a field= overload accepting the enum type.
   ## When readAccess and writeAccess: generates RMW chain overloads accepting the enum type.
   let enumType = ident(peripheralName.strVal & '_' & registerName.strVal & '_' & fieldName.strVal & "_enum")
+  let brandedType = ident(peripheralName.strVal & '_' & registerName.strVal & "_RegAddr")
+  let brandedTypeInst = nnkBracketExpr.newTree(brandedType, ident("Taddr"))
   result = newStmtList()
   result.add(quote do:
     declareEnum(`enumType`, `values`))
   if writeAccess:
     result.add(quote do:
-      proc `fieldName`*[Taddr: static RegType](regAddr: RegAddr[Taddr], value: `enumType`) {.inline.} =
+      proc `fieldName`*[Taddr: static RegType](regAddr: `brandedTypeInst`, value: `enumType`) {.inline.} =
         `fieldName`(regAddr, value.uint32))
   if readAccess and writeAccess:
     result.add(quote do:
@@ -295,4 +304,3 @@ macro declareFieldEnum*(peripheralName: untyped, registerName: untyped, fieldNam
         `fieldName`(regAddr, value.uint32)
       proc `fieldName`*[Taddr: static RegType](chainVal: FldVal[Taddr], value: `enumType`): FldVal[Taddr] {.inline.} =
         `fieldName`(chainVal, value.uint32))
-

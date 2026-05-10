@@ -56,3 +56,38 @@ declareField(peripheralName = RTC1, registerName = CC, fieldName = COMPARE, bitO
 suite "Regression of register access":
   test "write to a dimensioned register SHOULD compile":
     check compiles RTC1.CC(0).COMPARE(0'u32)
+
+declarePeripheral(peripheralName = RTC0, baseAddress = 0x4000B000'u32, peripheralDesc = "Real time counter 0")
+declareRegister(peripheralName = RTC0, registerName = TASKS_STOP, addressOffset = 0x004'u32, dim = 0, dimIncrement = 0, readAccess = false, writeAccess = true, registerDesc = "Stop RTC COUNTER")
+declareField(peripheralName = RTC0, registerName = TASKS_STOP, fieldName = TASKS_STOP, bitOffset = 0, bitWidth = 1, dim = 0, dimIncrement = 0, readAccess = false, writeAccess = true, fieldDesc = "Stop RTC COUNTER")
+
+# Declared above: declarePeripheral(peripheralName = RTC1, baseAddress = 0x40011000'u32, peripheralDesc = "Real time counter 0")
+declareRegister(peripheralName = RTC1, registerName = TASKS_STOP, addressOffset = 0x004'u32, dim = 0, dimIncrement = 0, readAccess = false, writeAccess = true, registerDesc = "Stop RTC COUNTER")
+declareField(peripheralName = RTC1, registerName = TASKS_STOP, fieldName = TASKS_STOP, bitOffset = 0, bitWidth = 1, dim = 0, dimIncrement = 0, readAccess = false, writeAccess = true, fieldDesc = "Stop RTC COUNTER")
+
+declarePeripheral(peripheralName = RTC2, baseAddress = 0x40024000'u32, peripheralDesc = "Real time counter 0")
+declareRegister(peripheralName = RTC2, registerName = TASKS_STOP, addressOffset = 0x004'u32, dim = 0, dimIncrement = 0, readAccess = false, writeAccess = true, registerDesc = "Stop RTC COUNTER")
+declareField(peripheralName = RTC2, registerName = TASKS_STOP, fieldName = TASKS_STOP, bitOffset = 0, bitWidth = 1, dim = 0, dimIncrement = 0, readAccess = false, writeAccess = true, fieldDesc = "Stop RTC COUNTER")
+
+suite "Regression of register access":
+  test "write to a field of a register with the same name as another register SHOULD compile":
+    RTC0.TASKS_STOP.TASKS_STOP(1)
+    RTC1.TASKS_STOP.TASKS_STOP(1)
+    RTC2.TASKS_STOP.TASKS_STOP(1)
+
+  test "write to a field of a register with the same name as another register SHOULD work":
+    const rtc0StopAddr = 0x4000B000'u32 + 0x004'u32
+    const rtc1StopAddr = 0x40011000'u32 + 0x004'u32
+    const rtc2StopAddr = 0x40024000'u32 + 0x004'u32
+    mockInitRegs()
+    mockRegPreset(rtc0StopAddr, 0'u32)
+    mockRegPreset(rtc1StopAddr, 0'u32)
+    mockRegPreset(rtc2StopAddr, 0'u32)
+    RTC0.TASKS_STOP.TASKS_STOP(1)
+    RTC1.TASKS_STOP.TASKS_STOP(1)
+    RTC2.TASKS_STOP.TASKS_STOP(1)
+    check mockRegRead(rtc0StopAddr) == 1
+    check mockRegRead(rtc1StopAddr) == 1
+    check mockRegRead(rtc2StopAddr) == 1
+
+
