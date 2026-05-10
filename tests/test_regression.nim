@@ -91,3 +91,21 @@ suite "Regression of register access":
     check mockRegRead(rtc2StopAddr) == 1
 
 
+# Already declared: declarePeripheral(peripheralName = RTC0, baseAddress = 0x4000B000'u32, peripheralDesc = "Real time counter 0")
+declareRegister(peripheralName = RTC0, registerName = CC, addressOffset = 0x00000540'u32, dim = 4, dimIncrement = 4, readAccess = true, writeAccess = true, registerDesc = "Description collection: Compare register n")
+declareField(peripheralName = RTC0, registerName = CC, fieldName = COMPARE, bitOffset = 0, bitWidth = 24, dim = 0, dimIncrement = 0, readAccess = true, writeAccess = true, fieldDesc = "Compare value")
+
+# Already declared: declarePeripheral(peripheralName = RTC2, baseAddress = 0x40024000'u32, peripheralDesc = "Real time counter 0")
+declareRegister(peripheralName = RTC2, registerName = CC, addressOffset = 0x00000540'u32, dim = 4, dimIncrement = 4, readAccess = true, writeAccess = true, registerDesc = "Description collection: Compare register n")
+declareField(peripheralName = RTC2, registerName = CC, fieldName = COMPARE, bitOffset = 0, bitWidth = 24, dim = 0, dimIncrement = 0, readAccess = true, writeAccess = true, fieldDesc = "Compare value")
+
+suite "Regression of field access":
+  test "read from a field with an epynomous twin SHOULD compile":
+    # Error is:
+    # D:\code\nim\minisvd2nim\tests\test_regression.nim(104, 22) Error: ambiguous call; both
+    # test_regression.COMPARE(regVal`gensym322: RegVal[COMPARE.Taddr])
+    # [proc declared in D:\code\nim\minisvd2nim\tests\test_regression.nim(54, 68)] and
+    # test_regression.COMPARE(regVal`gensym514: RegVal[COMPARE.Taddr])
+    # [proc declared in D:\code\nim\minisvd2nim\tests\test_regression.nim(100, 68)]
+    # match for: (RegVal[1073890624'u]) # DWH: == 0x40024540 (RTC2)
+    check compiles RTC2.CC(0).read().COMPARE()
