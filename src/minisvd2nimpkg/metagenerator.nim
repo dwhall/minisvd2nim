@@ -64,6 +64,14 @@ proc write*[Taddr: static RegType](_: RegAddr[Taddr], value: RegVal[Taddr] | Reg
   const p = cast[ptr RegType](Taddr)
   volatileStore(p, value.RegType)
 
+template declareDevice*(deviceName: untyped, svdFileVersion: static string, description: static string, ): untyped =
+  # Device details tuple
+  const device* {.inject.} = (name: astToStr(deviceName), svdFileVer: svdFileVersion, desc: description)
+
+template declareCpu*(cpuName: untyped, revision: static string, endian: static string, mpuPresent: static bool, fpuPresent: static bool, nvicPrioBits: static int, vendorSysTick: static int): untyped =
+  # CPU details tuple
+  const cpu* {.inject.} = (name: astToStr(cpuName), rev: revision, endianness: endian, mpuAvail: mpuPresent, fpuAvail: fpuPresent, nvicPriorityBits: nvicPrioBits, vndrSysTick: vendorSysTick != 0)
+
 template declarePeripheral*(peripheralName: untyped, baseAddress: static uint32, peripheralDesc: static string): untyped =
   const `peripheralName`* {.inject.} = Peripheral[baseAddress.RegType](baseAddress.RegType)
 

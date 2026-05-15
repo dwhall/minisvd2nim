@@ -109,3 +109,12 @@ suite "Regression of field access":
     # [proc declared in D:\code\nim\minisvd2nim\tests\test_regression.nim(100, 68)]
     # match for: (RegVal[1073890624'u]) # DWH: == 0x40024540 (RTC2)
     check compiles RTC2.CC(0).read().COMPARE()
+
+declareDevice(deviceName = nrf52840, svdFileVersion = "1", description = "nRF52840 reference description for radio MCU with ARM 32-bit Cortex-M4 Microcontroller ")
+declareCpu(cpuName = CM4, revision = "r0p1", endian = "little", mpuPresent = true, fpuPresent = true, nvicPrioBits = 3, vendorSysTick = 0)
+
+suite "Regression of constructors for device and CPU tuples in device.nim":
+  test "device tuple SHOULD be available":
+    check device.name == "nrf52840"
+  test "cpu tuple SHOULD be available":
+    check cpu.name == "CM4"
